@@ -17,6 +17,7 @@ pub async fn db() -> AsyncPgConnection {
     dotenv().ok();
 
     let connector = TlsConnector::builder()
+        .danger_accept_invalid_certs(true)
         .build().unwrap();
     let connector = MakeTlsConnector::new(connector);
 
