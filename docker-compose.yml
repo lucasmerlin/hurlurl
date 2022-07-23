@@ -1,6 +1,17 @@
 version: "3.9"
 services:
-  web:
+  urllb:
     build: .
     ports:
       - "3000:3000"
+    links:
+      - postgres
+    profiles:
+      - urllb
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
