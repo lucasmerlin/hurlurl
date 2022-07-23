@@ -1354,6 +1354,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1df8c4ec4b0627e53bdf214615ad287367e482558cf84b109250b37464dc03ae"
 
 [[package]]
+name = "postgres-native-tls"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d442770e2b1e244bb5eb03b31c79b65bb2568f413b899eaba850fa945a65954"
+dependencies = [
+ "futures",
+ "native-tls",
+ "tokio",
+ "tokio-native-tls",
+ "tokio-postgres",
+]
+
+[[package]]
 name = "postgres-protocol"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2108,9 +2121,12 @@ dependencies = [
  "diesel_migrations",
  "dotenv",
  "nanoid",
+ "native-tls",
+ "postgres-native-tls",
  "rand",
  "serde",
  "tokio",
+ "tokio-postgres",
  "tracing",
  "tracing-subscriber",
 ]

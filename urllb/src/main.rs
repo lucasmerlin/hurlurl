@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate diesel;
 
+use std::io::stdout;
 use std::net::SocketAddr;
 use std::ptr::eq;
 use std::sync::Arc;
@@ -22,7 +23,7 @@ use crate::schema::links::dsl::*;
 use crate::schema::links::url;
 use crate::schema::targets::dsl::targets;
 use crate::schema::targets::link_id;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations};
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness, HarnessWithOutput};
 
 mod db;
 mod models;
@@ -31,8 +32,11 @@ mod schema;
 #[tokio::main]
 async fn main() {
 
-    let mut db = old_connection();
-    run_migrations(&mut db);
+    // run migrations
+    {
+        let mut db = old_connection();
+        run_migrations(&mut db);
+    }
 
     // initialize tracing
     tracing_subscriber::fmt::init();
