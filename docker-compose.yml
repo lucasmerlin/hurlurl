@@ -8,6 +8,10 @@ services:
       - postgres
     profiles:
       - urllb
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres/postgres
+    depends_on:
+      - postgres
   postgres:
     image: postgres
     environment:
