@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 axum = "0.5"
+tower = "0.4"
+tower-http = { version = "0.3", features = ["cors"] }
 serde = "1"
 tracing-subscriber = "0.3"
 tokio = { version = "1", features = ["full", "tracing"] }
@@ -15,8 +17,12 @@ postgres-native-tls = "0.5"
 native-tls = "0.2"
 tracing = "0.1"
 diesel_migrations = "2.0.0-rc.1"
-diesel = { version = "2.0.0-rc.1", features = ["postgres"]}
-diesel-async = {git = "https://github.com/weiznich/diesel_async"}
+diesel = { version = "2.0.0-rc.1", features = ["postgres"] }
+diesel-async = { git = "https://github.com/weiznich/diesel_async" }
 dotenv = "0.15"
 rand = "0.8"
 nanoid = "0.4"
+include_dir = "0.7"
+mime_guess = "2"
+
+shared = { path = "../shared", features = ["diesel"] }
