@@ -21,26 +21,42 @@ struct Target {
 
 #[function_component(Home)]
 pub fn home() -> Html {
+    let input_ref = use_node_ref();
+
     let targets = use_state::<Vec<Target>, _>(|| vec![]);
 
     log::info!("{:?}", targets);
 
     let history = use_history().unwrap();
 
-    let onkeyup = {
-        let mut copy = targets.clone();
-        Callback::from(move |e: KeyboardEvent| {
-            let target = e.target_unchecked_into::<HtmlInputElement>();
+    let confirm = {
+        let input_ref = input_ref.clone();
+        let targets = targets.clone();
+        move || {
+            let targets = targets.clone();
 
-            let len = copy.len();
-            let mut clone = (*copy).clone();
-
-            if e.key() == "Enter" {
+            if let Some(input) = input_ref.cast::<HtmlInputElement>() {
+                let mut clone = (*targets).clone();
                 clone.push(Target {
-                    target_url: target.value(),
+                    target_url: input.value().clone(),
                 });
-                target.set_value("");
-                copy.set(clone);
+                targets.set(clone);
+                input.set_value("");
+            }
+        }
+    };
+
+    let add_target = {
+        let confirm = confirm.clone();
+        Callback::from(move |_| {
+            confirm();
+        })
+    };
+
+    let onkeyup = {
+        Callback::from(move |e: KeyboardEvent| {
+            if e.key() == "Enter" {
+                confirm();
             }
         })
     };
@@ -72,20 +88,30 @@ pub fn home() -> Html {
     };
 
     html! {
-        <>
-            <h1>{ "UrlLB" }</h1>
-            <p>{ "UrlLB is a load balancing link shortening service." }</p>
+            <div class="container">
+                <h1>{ "hurlurl" }</h1>
+                <p>{ "hurlurl is a load balancing link shortening service." }</p>
 
+                <p>{ "A hurlurl takes a list of links and randomly forwards to one of them."}</p>
 
-            { targets.iter().map(|target| html! {
-                <p>{ &target.target_url }</p>
-            }).collect::<Html>() }
+                <p>{ "Enter the URLs to shorten here:" }</p>
 
+                { targets.iter().map(|target| html! {
+                    <a class="target-item" href={target.target_url.clone()} target="_blank">{ &target.target_url }</a>
+                }).collect::<Html>() }
 
-            <input {onkeyup} label="Target URL" />
+                <div class="add_target">
 
-            <button onclick={create_link}>{ "Create Link" }</button>
+                    <input ref={input_ref} {onkeyup} label="Target URL" placeholder="enter link" />
 
-        </>
+                    <button onclick={add_target}>{ "+" }</button>
+
+                </div>
+                <button class="primary" onclick={create_link}>{ "create hurlurl" }</button>
+
+                <hr/>
+
+                <iframe class="gh-button" src="https://ghbtns.com/github-btn.html?user=lucasmerlin&repo=urllb&type=star&count=true&size=large" frameborder="0" scrolling="0" width="170" height="32" title="GitHub"></iframe>
+            </div>
     }
 }

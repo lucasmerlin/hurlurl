@@ -12,8 +12,10 @@ use yew::function_component;
 use yew::prelude::*;
 use yew_hooks::use_async;
 use yew_router::Routable;
+use yew_router::prelude::*;
 
 use shared::{CreateLinkDto, LinkDto};
+use crate::Route;
 
 use crate::use_fetch::use_fetch;
 
@@ -29,16 +31,23 @@ pub fn info(props: &InfoProps) -> Html {
     let data = use_fetch(&format!("/api/links/{}", link));
 
     html! {
-        <>
-            <h1>{ "UrlLB" }</h1>
+        <div class="container">
+
+            <Link<Route> to={Route::Home}><h1>{ "hurlurl" }</h1></Link<Route>>
+
             { if let Some(data) = data.as_ref() {
+                let url = format!("/{}", &data.link.url);
                 html!{<>
-                    <h2> { &data.link.url } </h2>
-                    <a href={ format!("/{}", &data.link.url) }>{ "Try me" }</a>
+                    <h2> { &data.link.url } {" - clicks: "} {&data.link.redirects} </h2>
+                    <b><a href={ url.clone() }>{"https://hurlurl.com"}{ &url }</a></b>
+
+                    <br/>
+
+                    <div>{ "Targets: "}</div>
                     <ul>
                         { for data.targets.iter().map(|target| html! {
                             <li>
-                                <b>{ &target.target_url }</b>
+                                <b><a href={target.target_url.clone()}>{ &target.target_url }</a></b>
                                 <ul>
                                     <li>{"clicks: "} { &target.redirects }</li>
                                 </ul>
@@ -49,7 +58,7 @@ pub fn info(props: &InfoProps) -> Html {
             } else {
                 html!{"Loading..."}
             }}
-        </>
+        </div>
     }
 }
 
