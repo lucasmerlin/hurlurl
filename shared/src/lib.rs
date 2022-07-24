@@ -6,6 +6,7 @@ use diesel::{Queryable, Identifiable};
 #[cfg(feature = "diesel")]
 use crate::schema::*;
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 #[cfg_attr(feature = "diesel", derive(Queryable, Identifiable))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -28,14 +29,23 @@ pub struct Target {
     pub redirects: i32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Validate, Clone, Eq, PartialEq, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTargetDto {
+    #[validate(url)]
+    pub target_url: String,
+}
+
+#[derive(Serialize, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateLinkDto {
     #[serde(default)]
     pub url: Option<String>,
     #[serde(default)]
     pub permanent_redirect: bool,
-    pub targets: Vec<String>,
+    #[validate(length(min = 1))]
+    #[validate]
+    pub targets: Vec<CreateTargetDto>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

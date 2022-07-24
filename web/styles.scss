@@ -13,6 +13,23 @@ body {
   align-items: center;
   font-size: 20px;
   margin: 16px;
+
+
+  /* These are technically the same, but use both */
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+
+  -ms-word-break: break-all;
+  /* This is the dangerous one in WebKit, as it breaks things wherever */
+  word-break: break-all;
+  /* Instead use this non-standard one: */
+  word-break: break-word;
+
+  /* Adds a hyphen where the word breaks, if supported (No Blink) */
+  -ms-hyphens: auto;
+  -moz-hyphens: auto;
+  -webkit-hyphens: auto;
+  hyphens: auto;
 }
 
 .container {
@@ -39,13 +56,18 @@ body {
   margin-top: 16px;
   display: flex;
   margin-bottom: 24px;
-  gap: 8px;
+  gap: 16px;
+  align-items: baseline;
 
-  input {
-    border: none;
-    border-radius: 4px;
-    padding: 4px;
+  div {
     width: 70%;
+
+    input {
+      padding: 4px;
+      border: none;
+      border-radius: 4px;
+      width: 100%;
+    }
   }
 
   button {
@@ -92,10 +114,8 @@ button {
   box-shadow: 0 2px 0 0 $action;
 }
 
-.gh-button {
-  margin-top: 72px;
-  justify-self: flex-start;
-  margin-right: -32px;
+.info {
+    margin-top: 72px;
 }
 
 a {
@@ -109,4 +129,9 @@ a {
 
 a {
   text-decoration: none;
+}
+
+.error {
+  color: red;
+  font-size: 16px;
 }

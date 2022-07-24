@@ -35,6 +35,8 @@ mod models;
 mod schema;
 
 use include_dir::{include_dir, Dir};
+use mime_guess::Mime;
+use validator::Validate;
 
 static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../web/dist");
 
@@ -130,6 +132,8 @@ struct Params {
 }
 
 async fn post_link(Json(body): Json<CreateLinkDto>) -> Result<impl IntoResponse, StatusCode> {
+    body.validate().map_err(|_| StatusCode::BAD_REQUEST)?;
+
     let mut db = db().await;
 
     let link = NewLink {
@@ -148,7 +152,7 @@ async fn post_link(Json(body): Json<CreateLinkDto>) -> Result<impl IntoResponse,
             &body.targets.iter().map(|target| {
                 NewTarget {
                     link_id: link.id,
-                    target_url: target,
+                    target_url: &target.target_url,
                 }
             }).collect::<Vec<_>>()
         )
@@ -190,13 +194,23 @@ async fn static_path(Path(path): Path<String>) -> impl IntoResponse {
             .status(StatusCode::NOT_FOUND)
             .body(body::boxed(Empty::new()))
             .unwrap(),
-        Some(file) => Response::builder()
-            .status(StatusCode::OK)
-            .header(
-                header::CONTENT_TYPE,
-                HeaderValue::from_str(mime_type.as_ref()).unwrap(),
-            )
-            .body(body::boxed(Full::from(file.contents())))
-            .unwrap(),
+        Some(file) => {
+            let mut response = Response::builder()
+                .status(StatusCode::OK)
+                .header(
+                    header::CONTENT_TYPE,
+                    HeaderValue::from_str(mime_type.as_ref()).unwrap(),
+                );
+
+            if mime_type != "text/html" {
+                response = response.header(
+                    header::CACHE_CONTROL,
+                    HeaderValue::from_static("public, max-age=31536000"),
+                );
+            };
+
+            response.body(body::boxed(Full::from(file.contents())))
+                .unwrap()
+        },
     }
 }
