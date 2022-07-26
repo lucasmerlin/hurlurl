@@ -101,37 +101,37 @@ pub fn home() -> Html {
     };
 
     html! {
-            <div class="container">
-                <h1>{ "hurlurl" }</h1>
-                <p>{ "hurlurl is a load balancing link shortening service." }</p>
+        <div class="container">
+            <h1>{ "hurlurl" }</h1>
+            <p>{ "hurlurl is a load balancing link shortening service." }</p>
 
-                <p>{ "A hurlurl takes a list of links and randomly forwards to one of them."}</p>
+            <p>{ "A hurlurl takes a list of links and randomly forwards to one of them."}</p>
 
-                <p>{ "Enter the URLs to shorten here:" }</p>
+            <p>{ "Enter the URLs to shorten here:" }</p>
 
-                { targets.iter().map(|target| html! {
-                    <a class="target-item" href={target.target_url.clone()} target="_blank">{ &target.target_url }</a>
-                }).collect::<Html>() }
+            { targets.iter().map(|target| html! {
+                <a class="target-item" href={target.target_url.clone()} target="_blank">{ &target.target_url }</a>
+            }).collect::<Html>() }
 
-                <div class="add_target">
+            <div class="add_target">
 
-                    <div>
-                        <input ref={input_ref} {onkeyup} label="Target URL" placeholder="enter link" />
-                        { error.iter().map(|error| html! {
-                            <div class="error">{ error }</div>
-                        }).collect::<Html>() }
-                    </div>
-                    <button onclick={add_target}>{ "+" }</button>
-
+                <div>
+                    <input ref={input_ref} {onkeyup} label="Target URL" placeholder="enter link" />
+                    { error.iter().map(|error| html! {
+                        <div class="error">{ error }</div>
+                    }).collect::<Html>() }
                 </div>
-                <button class="primary" onclick={create_link}>{ "create hurlurl" }</button>
+                <button onclick={add_target}>{ "+" }</button>
 
-                <hr/>
-
-                <div class="info">
-                    <p>{ "hurlurl is a open source website written in rust" }</p>
-                    <iframe class="gh-button" src="https://ghbtns.com/github-btn.html?user=lucasmerlin&repo=urllb&type=star&count=true&size=large" frameborder="0" scrolling="0" width="170" height="32" title="GitHub"></iframe>
-                </div>
             </div>
+            <button class="primary" onclick={create_link}>{ "create hurlurl" }</button>
+
+            <hr/>
+
+            <div class="info">
+                <p>{ "hurlurl is a open source website written in rust" }</p>
+                <iframe class="gh-button" src="https://ghbtns.com/github-btn.html?user=lucasmerlin&repo=urllb&type=star&count=true&size=large" frameborder="0" scrolling="0" width="170" height="32" title="GitHub"></iframe>
+            </div>
+        </div>
     }
 }
