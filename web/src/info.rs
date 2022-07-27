@@ -39,7 +39,7 @@ pub fn info(props: &InfoProps) -> Html {
                 let url = format!("/{}", &data.link.url);
                 html!{<>
                     <h2> { &data.link.url } {" - clicks: "} {&data.link.redirects} </h2>
-                    <b><a href={ url.clone() }>{"https://hurlurl.hellopaint.io"}{ &url }</a></b>
+                    <b><a href={ url.clone() }>{"https://hurlurl.com"}{ &url }</a></b>
 
                     <br/>
 
