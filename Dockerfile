@@ -10,7 +10,7 @@ COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
-RUN apt update && apt install -y pkg-config libssl-dev libpq-dev
+RUN apt update && apt install -y pkg-config libssl-dev libpq-dev wget
 RUN rustup target add wasm32-unknown-unknown
 
 # Install trunk
