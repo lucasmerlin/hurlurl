@@ -1,6 +1,8 @@
 mod info;
 mod home;
 mod use_fetch;
+mod form;
+mod header;
 
 use std::ops::{Deref, DerefMut};
 
