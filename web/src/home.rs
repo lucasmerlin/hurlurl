@@ -1,136 +1,49 @@
-use std::ops::{Deref, DerefMut};
-
 use gloo_net::http::Request;
-use regex::Regex;
-use serde::Serialize;
 use validator::Validate;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
 use yew::function_component;
 use yew::prelude::*;
-use yew_router::hooks::use_history;
-use yew_router::Routable;
 use yew_router::history::History;
+use yew_router::hooks::use_history;
+
 use shared::{CreateLinkDto, CreateTargetDto, LinkDto};
+use crate::header::Header;
+
 use crate::Route;
-
-
+use crate::form::Form;
 
 #[function_component(Home)]
 pub fn home() -> Html {
-    let input_ref = use_node_ref();
-
-    let targets = use_state::<Vec<CreateTargetDto>, _>(|| vec![]);
-
-    let error = use_state::<Option<String>, _>(|| None);
-
-    log::info!("{:?}", targets);
-
-    let history = use_history().unwrap();
-
-    let confirm = {
-        let input_ref = input_ref.clone();
-        let targets = targets.clone();
-        let error = error.clone();
-        move || {
-            let targets = targets.clone();
-
-            if let Some(input) = input_ref.cast::<HtmlInputElement>() {
-
-                let val = input.value();
-                let create = CreateTargetDto {
-                    target_url: val.clone(),
-                };
-
-                if let Err(e) = create.validate() {
-                    error.set(Some("Invalid URL".to_string()));
-                    return;
-                } else {
-                    error.set(None);
-                }
-
-                let mut clone = (*targets).clone();
-                clone.push(CreateTargetDto {
-                    target_url: input.value().clone(),
-                });
-                targets.set(clone);
-                input.set_value("");
-            }
-        }
-    };
-
-    let add_target = {
-        let confirm = confirm.clone();
-        Callback::from(move |_| {
-            confirm();
-        })
-    };
-
-    let onkeyup = {
-        Callback::from(move |e: KeyboardEvent| {
-            if e.key() == "Enter" {
-                confirm();
-            }
-        })
-    };
-
-    let create_link = {
-        let targets = targets.clone();
-        let history = history.clone();
-        Callback::from(move |_| {
-            let targets = targets.clone();
-            let history = history.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                let response = Request::post("/api/links")
-                    .header("Content-Type", "application/json")
-                    .json(&CreateLinkDto {
-                        url: None,
-                        permanent_redirect: false,
-                        targets: (*targets).clone(),
-                    }).unwrap()
-                    .send()
-                    .await
-                    .unwrap()
-                    .json::<LinkDto>()
-                    .await
-                    .unwrap();
-
-                history.push(Route::Link {link: response.link.url});
-            });
-        })
-    };
 
     html! {
-        <div class="container">
-            <h1>{ "hurlurl" }</h1>
-            <p>{ "hurlurl is a load balancing link shortening service." }</p>
-
-            <p>{ "A hurlurl takes a list of links and randomly forwards to one of them."}</p>
-
-            <p>{ "Enter the URLs to shorten here:" }</p>
-
-            { targets.iter().map(|target| html! {
-                <a class="target-item" href={target.target_url.clone()} target="_blank">{ &target.target_url }</a>
-            }).collect::<Html>() }
-
-            <div class="add_target">
-
-                <div>
-                    <input ref={input_ref} {onkeyup} label="Target URL" placeholder="enter link" />
-                    { error.iter().map(|error| html! {
-                        <div class="error">{ error }</div>
-                    }).collect::<Html>() }
+        <div class="min-h-screen flex flex-col">
+            <Header/>
+            <div class="hero bg-base-200 flex-grow">
+                <div class="hero-content flex-col lg:flex-row-reverse gap-24">
+                    <div class="text-center lg:text-left mt-12">
+                        <div class="titleAnimation"><h1 class="text-5xl font-bold">{ "🌪 hurlurl" }</h1></div>
+                        <p class="py-6">{ "hurlurl is a load balancing link shortening service. A hurlurl takes a list of links and randomly forwards to one of them." }</p>
+                    </div>
+                    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
+                        <div class="card-body">
+                            <Form/>
+                        </div>
+                    </div>
                 </div>
-                <button onclick={add_target}>{ "+" }</button>
-
             </div>
-            <button class="primary" onclick={create_link}>{ "create hurlurl" }</button>
 
-            <hr/>
-
-            <div class="info">
-                <p>{ "hurlurl is a open source website written in rust" }</p>
-                <iframe class="gh-button" src="https://ghbtns.com/github-btn.html?user=lucasmerlin&repo=urllb&type=star&count=true&size=large" frameborder="0" scrolling="0" width="170" height="32" title="GitHub"></iframe>
+            <div>
+                <footer class="footer items-center p-4 bg-neutral text-neutral-content">
+                    <div class="items-center grid-flow-col">
+                        <p>
+                            {"hurlurl is a open source website written in rust."}
+                        </p>
+                    </div>
+                    <div class="grid-flow-col gap-4 place-self-center justify-self-end">
+                         <a class="github-button" href="https://github.com/lucasmerlin/hurlurl" data-size="large" aria-label="Star hurlurl on Github">{"Star on Github"}</a>
+                    </div>
+                </footer>
             </div>
         </div>
     }
