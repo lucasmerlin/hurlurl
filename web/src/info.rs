@@ -54,7 +54,7 @@ pub fn info(props: &InfoProps) -> Html {
 
                         <h1 class="text-2xl my-5">{"Target link stats"}</h1>
 
-                        <div class="stats stats-vertical lg:stats-horizontal shadow">
+                        <div class="stats stats-vertical shadow">
 
                             { for data.targets.iter().map(|target| html! {
                                 <div class="stat">
