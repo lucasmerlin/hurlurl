@@ -10,7 +10,7 @@ env:
   GAR_LOCATION: europe-west3
   REPOSITORY: hurlurl
   SERVICE: hurlurl
-  REGION: europe-west3
+  REGION: europe-west1
 
 jobs:
   deploy:
