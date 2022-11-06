@@ -7,6 +7,7 @@ use crate::Route;
 use validator::Validate;
 use wasm_bindgen::JsCast;
 use yew_router::history::History;
+use crate::permanent_redirect_checkbox::PermanentRedirectCheckbox;
 
 #[function_component(Form)]
 pub fn form() -> Html {
@@ -14,6 +15,8 @@ pub fn form() -> Html {
     let input_ref = use_node_ref();
 
     let targets = use_state::<Vec<CreateTargetDto>, _>(|| vec![]);
+
+    let permanent_redirect = use_state(|| false);
 
     let error = use_state::<Option<String>, _>(|| None);
 
@@ -92,15 +95,17 @@ pub fn form() -> Html {
     let create_link = {
         let targets = targets.clone();
         let history = history.clone();
+        let permanent_redirect = permanent_redirect.clone();
         Callback::from(move |_| {
             let targets = targets.clone();
             let history = history.clone();
+            let permanent_redirect = permanent_redirect.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 let response = Request::post("/api/links")
                     .header("Content-Type", "application/json")
                     .json(&CreateLinkDto {
                         url: None,
-                        permanent_redirect: false,
+                        permanent_redirect: *permanent_redirect,
                         targets: (*targets).clone(),
                     }).unwrap()
                     .send()
@@ -112,6 +117,13 @@ pub fn form() -> Html {
 
                 history.push(Route::Link { link: response.link.url });
             });
+        })
+    };
+
+    let redirect_click = {
+        let permanent_redirect = permanent_redirect.clone();
+        Callback::from(move |_| {
+           permanent_redirect.set(!*permanent_redirect);
         })
     };
 
@@ -135,7 +147,9 @@ pub fn form() -> Html {
                 <input type="text" placeholder="Enter URLs" class="input input-bordered" onchange={add_target.clone()} />
             </div>
 
-            <div class="form-control mt-6">
+            <PermanentRedirectCheckbox on_click={redirect_click} checked={*permanent_redirect} disabled={false} />
+
+            <div class="form-control">
                 <button class="btn btn-primary" onclick={create_link}>{ "Create hurlurl" }</button>
             </div>
         </>

@@ -3,6 +3,7 @@ mod home;
 mod use_fetch;
 mod form;
 mod header;
+mod permanent_redirect_checkbox;
 
 use std::ops::{Deref, DerefMut};
 

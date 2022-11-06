@@ -19,6 +19,8 @@ use crate::Route;
 use crate::header::Header;
 
 use crate::use_fetch::use_fetch;
+use crate::permanent_redirect_checkbox::PermanentRedirectCheckbox;
+
 
 #[derive(Properties, PartialEq)]
 pub struct InfoProps {
@@ -41,6 +43,8 @@ pub fn info(props: &InfoProps) -> Html {
                     html!{<div>
 
                         <h1 class="text-5xl my-5">{"Stats"}</h1>
+
+                        <PermanentRedirectCheckbox checked={data.link.permanent_redirect} disabled={true} />
 
                         <div class="stats shadow">
 
