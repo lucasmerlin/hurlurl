@@ -4,6 +4,7 @@
   "description": "Hurlurl can take a list of urls and create one url that randomly redirects to one of them.",
   "scripts": {
     "tailwind": "tailwindcss -i ./web/input.css -o ./web/output.css --watch",
+    "tailwind:build": "tailwindcss -i ./web/input.css -o ./web/output.css  --minify",
     "start": "cd web && trunk serve",
     "start:backend": "cd urllb && cargo run"
   },

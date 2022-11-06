@@ -2,3 +2,4 @@
 /target
 /web/dist
 node_modules
+/web/output.css
