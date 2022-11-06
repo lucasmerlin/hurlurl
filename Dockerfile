@@ -27,7 +27,7 @@ COPY . .
 RUN npm ci
 RUN npm run tailwind:build
 RUN (cd web && RUSTFLAGS=--cfg=web_sys_unstable_apis ../trunk build --release --public-url static)
-RUN cargo build --release
+RUN RUSTFLAGS=--cfg=web_sys_unstable_apis cargo build --release
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bullseye-slim AS runtime
