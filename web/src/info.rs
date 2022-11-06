@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
-use web_sys::HtmlInputElement;
+use web_sys::{HtmlInputElement, window};
 use yew::function_component;
 use yew::prelude::*;
 use yew_hooks::use_async;
@@ -33,6 +33,15 @@ pub fn info(props: &InfoProps) -> Html {
 
     let data = use_fetch(&format!("/api/links/{}", link));
 
+    let copy_link = {
+        let link = link.clone();
+        Callback::from(move |_| {
+            if let Some(clipboard) = window().unwrap().navigator().clipboard() {
+                clipboard.write_text(&format!("https://hurlurl.com/{}", link));
+            }
+        })
+    };
+
     html! {
         <>
             <Header/>
@@ -45,6 +54,8 @@ pub fn info(props: &InfoProps) -> Html {
                         <h1 class="text-5xl my-5">{"Stats"}</h1>
 
                         <PermanentRedirectCheckbox checked={data.link.permanent_redirect} disabled={true} />
+
+                        <button onclick={copy_link} class="btn m-4">{"Copy link"}</button><br/>
 
                         <div class="stats shadow">
 

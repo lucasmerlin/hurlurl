@@ -5,7 +5,7 @@
   "scripts": {
     "tailwind": "tailwindcss -i ./web/input.css -o ./web/output.css --watch",
     "tailwind:build": "tailwindcss -i ./web/input.css -o ./web/output.css  --minify",
-    "start": "cd web && trunk serve",
+    "start": "cd web && RUSTFLAGS=--cfg=web_sys_unstable_apis trunk serve",
     "start:backend": "cd urllb && cargo run"
   },
   "repository": {

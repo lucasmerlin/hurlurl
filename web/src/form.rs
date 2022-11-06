@@ -18,45 +18,22 @@ pub fn form() -> Html {
 
     let permanent_redirect = use_state(|| false);
 
-    let error = use_state::<Option<String>, _>(|| None);
+    let errors = targets.iter().map(|target| {
+        if let Ok(_) = target.validate() {
+            None
+        } else {
+            Some("Invalid URL")
+        }
+    }).collect::<Vec<_>>();
+
+    let has_error = errors.iter().find(|v| v.is_some()).is_some();
 
     log::info!("{:?}", targets);
 
     let history = use_history().unwrap();
 
-    let confirm = {
-        let input_ref = input_ref.clone();
-        let targets = targets.clone();
-        let error = error.clone();
-        move || {
-            let targets = targets.clone();
-
-            if let Some(input) = input_ref.cast::<HtmlInputElement>() {
-                let val = input.value();
-                let create = CreateTargetDto {
-                    target_url: val.clone(),
-                };
-
-                if let Err(e) = create.validate() {
-                    error.set(Some("Invalid URL".to_string()));
-                    return;
-                } else {
-                    error.set(None);
-                }
-
-                let mut clone = (*targets).clone();
-                clone.push(CreateTargetDto {
-                    target_url: input.value().clone(),
-                });
-                targets.set(clone);
-                input.set_value("");
-            }
-        }
-    };
-
     let add_target = {
-        let confirm = confirm.clone();
-        let mut targets = targets.clone();
+        let targets = targets.clone();
         Callback::from(move |e: Event| {
             let target = e.target().unwrap();
             let input = target.dyn_ref::<HtmlInputElement>().unwrap();
@@ -69,14 +46,6 @@ pub fn form() -> Html {
                 target_url: value,
             });
             targets.set(targets_clone);
-        })
-    };
-
-    let onkeyup = {
-        Callback::from(move |e: KeyboardEvent| {
-            if e.key() == "Enter" {
-                confirm();
-            }
         })
     };
 
@@ -136,7 +105,12 @@ pub fn form() -> Html {
                 html! {
 
                     <div class="form-control">
-                        <input autofocus={true} type="text" placeholder="Enter URLs" class="input input-bordered" value={Some(target.target_url.clone())} onchange={move |e| {on_target_change.emit((e, i));}} />
+                        <input autofocus={true} type="text" placeholder="Enter URLs" class={format!("input input-bordered {}", errors[i].map(|e| "input-error").unwrap_or(""))} value={Some(target.target_url.clone())} onchange={move |e| {on_target_change.emit((e, i));}} />
+                        if let Some(error) = errors[i] {
+                            <label class="label">
+                                <span class="label-text-alt text-error">{error}</span>
+                            </label>
+                        }
                     </div>
 
                 }
@@ -150,7 +124,7 @@ pub fn form() -> Html {
             <PermanentRedirectCheckbox on_click={redirect_click} checked={*permanent_redirect} disabled={false} />
 
             <div class="form-control">
-                <button class="btn btn-primary" onclick={create_link}>{ "Create hurlurl" }</button>
+                <button class="btn btn-primary" onclick={create_link} disabled={has_error || targets.len() == 0}>{ "Create hurlurl" }</button>
             </div>
         </>
     }
