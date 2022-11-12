@@ -3,17 +3,23 @@ extern crate diesel;
 
 use std::net::SocketAddr;
 
-use axum::{body, http::StatusCode, Json, response::IntoResponse, Router, routing::{get, post}};
 use axum::body::{Empty, Full};
 use axum::extract::Path;
 use axum::http::{header, HeaderValue};
 use axum::response::{Redirect, Response};
-use diesel::{Connection, QueryDsl};
+use axum::{
+    body,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, post},
+    Json, Router,
+};
 use diesel::associations::HasTable;
 use diesel::expression_methods::ExpressionMethods;
+use diesel::{Connection, QueryDsl};
 use diesel_async::RunQueryDsl;
 use diesel_migrations::MigrationHarness;
-use include_dir::{Dir, include_dir};
+use include_dir::{include_dir, Dir};
 use nanoid::nanoid;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
@@ -37,7 +43,6 @@ static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../web/dist");
 
 #[tokio::main]
 async fn main() {
-
     // run migrations
     {
         let mut db = old_connection();
@@ -46,7 +51,6 @@ async fn main() {
 
     // initialize tracing
     tracing_subscriber::fmt::init();
-
 
     let cors = CorsLayer::new()
         // allow requests from any origin
@@ -83,12 +87,14 @@ async fn root() -> impl IntoResponse {
 
 async fn link(Path(params): Path<Params>) -> Result<impl IntoResponse, StatusCode> {
     let mut db = db().await;
-    let link: Link = links.filter(url.eq(params.link))
+    let link: Link = links
+        .filter(url.eq(params.link))
         .first::<Link>(&mut db)
         .await
         .map_err(|_| StatusCode::NOT_FOUND)?;
 
-    let results: Vec<Target> = targets.filter(link_id.eq(link.id))
+    let results: Vec<Target> = targets
+        .filter(link_id.eq(link.id))
         .limit(10)
         .load::<Target>(&mut db)
         .await
@@ -143,12 +149,14 @@ async fn post_link(Json(body): Json<CreateLinkDto>) -> Result<impl IntoResponse,
 
     let target_results = diesel::insert_into(targets::table())
         .values(
-            &body.targets.iter().map(|target| {
-                NewTarget {
+            &body
+                .targets
+                .iter()
+                .map(|target| NewTarget {
                     link_id: link.id,
                     target_url: &target.target_url,
-                }
-            }).collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
         )
         .get_results::<Target>(&mut db)
         .await
@@ -162,12 +170,14 @@ async fn post_link(Json(body): Json<CreateLinkDto>) -> Result<impl IntoResponse,
 
 async fn link_info(Path(params): Path<Params>) -> Result<impl IntoResponse, StatusCode> {
     let mut db = db().await;
-    let link: Link = links.filter(url.eq(params.link))
+    let link: Link = links
+        .filter(url.eq(params.link))
         .first::<Link>(&mut db)
         .await
         .map_err(|_| StatusCode::NOT_FOUND)?;
 
-    let results: Vec<Target> = targets.filter(link_id.eq(link.id))
+    let results: Vec<Target> = targets
+        .filter(link_id.eq(link.id))
         .limit(10)
         .load::<Target>(&mut db)
         .await
@@ -180,7 +190,8 @@ async fn link_info(Path(params): Path<Params>) -> Result<impl IntoResponse, Stat
 }
 
 async fn total_stats() -> Result<impl IntoResponse, StatusCode> {
-    let stats = stats::total_stats().await
+    let stats = stats::total_stats()
+        .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(stats))
@@ -196,12 +207,10 @@ async fn static_path(Path(path): Path<String>) -> impl IntoResponse {
             .body(body::boxed(Empty::new()))
             .unwrap(),
         Some(file) => {
-            let mut response = Response::builder()
-                .status(StatusCode::OK)
-                .header(
-                    header::CONTENT_TYPE,
-                    HeaderValue::from_str(mime_type.as_ref()).unwrap(),
-                );
+            let mut response = Response::builder().status(StatusCode::OK).header(
+                header::CONTENT_TYPE,
+                HeaderValue::from_str(mime_type.as_ref()).unwrap(),
+            );
 
             if mime_type != "text/html" {
                 response = response.header(
@@ -210,7 +219,8 @@ async fn static_path(Path(path): Path<String>) -> impl IntoResponse {
                 );
             };
 
-            response.body(body::boxed(Full::from(file.contents())))
+            response
+                .body(body::boxed(Full::from(file.contents())))
                 .unwrap()
         }
     }

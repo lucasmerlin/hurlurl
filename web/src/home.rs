@@ -5,8 +5,8 @@ use yew_router::prelude::*;
 
 use crate::form::Form;
 use crate::header::Header;
-use crate::Route;
 use crate::total_stats::TotalStats;
+use crate::Route;
 
 #[function_component(Home)]
 pub fn home() -> Html {

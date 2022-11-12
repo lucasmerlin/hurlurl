@@ -1,10 +1,9 @@
-use yew::{function_component, html};
-use shared::TotalStats as Stats;
 use crate::use_fetch::use_fetch;
+use shared::TotalStats as Stats;
+use yew::{function_component, html};
 
 #[function_component(TotalStats)]
 pub fn total_stats() -> Html {
-
     let data: Option<Stats> = use_fetch("/api/stats");
 
     let value = |val| {

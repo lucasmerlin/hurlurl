@@ -1,5 +1,5 @@
-use diesel::QueryDsl;
 use diesel::dsl::sum;
+use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 
 use cached::proc_macro::cached;
@@ -9,7 +9,7 @@ use crate::db::db;
 use crate::schema::links::dsl::*;
 use crate::schema::targets::dsl::targets;
 
-#[cached(time=60, result = true)]
+#[cached(time = 60, result = true)]
 pub async fn total_stats() -> anyhow::Result<TotalStats> {
     let mut db = db().await;
 

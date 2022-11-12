@@ -2,9 +2,9 @@
 pub mod schema;
 
 #[cfg(feature = "diesel")]
-use diesel::{Queryable, Identifiable};
-#[cfg(feature = "diesel")]
 use crate::schema::*;
+#[cfg(feature = "diesel")]
+use diesel::{Identifiable, Queryable};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 

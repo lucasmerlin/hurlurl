@@ -1,30 +1,32 @@
-use gloo_net::http::Request;
-use web_sys::{Event, HtmlInputElement, KeyboardEvent};
-use yew::{Callback, function_component, Html, html, use_node_ref, use_state};
-use yew_router::hooks::use_history;
-use shared::{CreateLinkDto, CreateTargetDto, LinkDto};
+use crate::permanent_redirect_checkbox::PermanentRedirectCheckbox;
 use crate::Route;
+use gloo_net::http::Request;
+use shared::{CreateLinkDto, CreateTargetDto, LinkDto};
 use validator::Validate;
 use wasm_bindgen::JsCast;
+use web_sys::{Event, HtmlInputElement, KeyboardEvent};
+use yew::{function_component, html, use_node_ref, use_state, Callback, Html};
 use yew_router::history::History;
-use crate::permanent_redirect_checkbox::PermanentRedirectCheckbox;
+use yew_router::hooks::use_history;
 
 #[function_component(Form)]
 pub fn form() -> Html {
-
     let input_ref = use_node_ref();
 
     let targets = use_state::<Vec<CreateTargetDto>, _>(|| vec![]);
 
     let permanent_redirect = use_state(|| false);
 
-    let errors = targets.iter().map(|target| {
-        if let Ok(_) = target.validate() {
-            None
-        } else {
-            Some("Invalid URL")
-        }
-    }).collect::<Vec<_>>();
+    let errors = targets
+        .iter()
+        .map(|target| {
+            if let Ok(_) = target.validate() {
+                None
+            } else {
+                Some("Invalid URL")
+            }
+        })
+        .collect::<Vec<_>>();
 
     let has_error = errors.iter().find(|v| v.is_some()).is_some();
 
@@ -42,9 +44,7 @@ pub fn form() -> Html {
             input.set_value("");
 
             let mut targets_clone = (*targets).clone();
-            targets_clone.push(CreateTargetDto {
-                target_url: value,
-            });
+            targets_clone.push(CreateTargetDto { target_url: value });
             targets.set(targets_clone);
         })
     };
@@ -52,12 +52,16 @@ pub fn form() -> Html {
     let on_target_change = {
         let mut targets = targets.clone();
         Callback::from(move |(e, i): (Event, usize)| {
-            let value = e.target().unwrap().dyn_ref::<HtmlInputElement>().unwrap().value();
+            let value = e
+                .target()
+                .unwrap()
+                .dyn_ref::<HtmlInputElement>()
+                .unwrap()
+                .value();
 
             let mut targets_clone = (*targets).clone();
             targets_clone[i].target_url = value;
             targets.set(targets_clone);
-
         })
     };
 
@@ -76,7 +80,8 @@ pub fn form() -> Html {
                         url: None,
                         permanent_redirect: *permanent_redirect,
                         targets: (*targets).clone(),
-                    }).unwrap()
+                    })
+                    .unwrap()
                     .send()
                     .await
                     .unwrap()
@@ -84,7 +89,9 @@ pub fn form() -> Html {
                     .await
                     .unwrap();
 
-                history.push(Route::Link { link: response.link.url });
+                history.push(Route::Link {
+                    link: response.link.url,
+                });
             });
         })
     };
@@ -92,7 +99,7 @@ pub fn form() -> Html {
     let redirect_click = {
         let permanent_redirect = permanent_redirect.clone();
         Callback::from(move |_| {
-           permanent_redirect.set(!*permanent_redirect);
+            permanent_redirect.set(!*permanent_redirect);
         })
     };
 
@@ -128,5 +135,4 @@ pub fn form() -> Html {
             </div>
         </>
     }
-
 }

@@ -1,26 +1,25 @@
 use std::ops::{Deref, DerefMut};
 
 use futures_util::TryFutureExt;
-use gloo_net::Error;
 use gloo_net::http::Request;
+use gloo_net::Error;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{HtmlInputElement, window};
+use web_sys::{window, HtmlInputElement};
 use yew::function_component;
 use yew::prelude::*;
 use yew_hooks::use_async;
-use yew_router::Routable;
 use yew_router::prelude::*;
+use yew_router::Routable;
 
-use shared::{CreateLinkDto, LinkDto};
-use crate::Route;
 use crate::header::Header;
+use crate::Route;
+use shared::{CreateLinkDto, LinkDto};
 
-use crate::use_fetch::use_fetch;
 use crate::permanent_redirect_checkbox::PermanentRedirectCheckbox;
-
+use crate::use_fetch::use_fetch;
 
 #[derive(Properties, PartialEq)]
 pub struct InfoProps {
@@ -89,4 +88,3 @@ pub fn info(props: &InfoProps) -> Html {
         </>
     }
 }
-
