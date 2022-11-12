@@ -1,23 +1,25 @@
 #[macro_use]
 extern crate diesel;
 
-use std::io::stdout;
 use std::net::SocketAddr;
-use std::ptr::eq;
-use std::sync::Arc;
 
-use axum::{body, Extension, http::StatusCode, Json, response::IntoResponse, Router, routing::{get, post}};
+use axum::{body, http::StatusCode, Json, response::IntoResponse, Router, routing::{get, post}};
 use axum::body::{Empty, Full};
-use axum::extract;
 use axum::extract::Path;
 use axum::http::{header, HeaderValue};
 use axum::response::{Redirect, Response};
+use diesel::{Connection, QueryDsl};
 use diesel::associations::HasTable;
 use diesel::expression_methods::ExpressionMethods;
-use diesel::{Connection, PgConnection, QueryDsl};
-use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use diesel_async::RunQueryDsl;
+use diesel_migrations::MigrationHarness;
+use include_dir::{Dir, include_dir};
 use nanoid::nanoid;
+use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
+use tower_http::cors;
+use tower_http::cors::CorsLayer;
+use validator::Validate;
 
 use crate::db::{db, old_connection, run_migrations};
 use crate::models::{CreateLinkDto, Link, LinkDto, NewLink, NewTarget, Target};
@@ -25,18 +27,10 @@ use crate::schema::links::dsl::*;
 use crate::schema::links::url;
 use crate::schema::targets::dsl::targets;
 use crate::schema::targets::link_id;
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness, HarnessWithOutput};
-use rand::seq::SliceRandom;
-use tower_http::cors;
-use tower_http::cors::{any, CorsLayer};
 
 mod db;
 mod models;
 mod schema;
-
-use include_dir::{include_dir, Dir};
-use mime_guess::Mime;
-use validator::Validate;
 
 static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../web/dist");
 
@@ -102,7 +96,6 @@ async fn link(Path(params): Path<Params>) -> Result<impl IntoResponse, StatusCod
     let target = results.choose(&mut rand::thread_rng());
 
     if let Some(target) = target {
-
         diesel::update(&link)
             .set(schema::links::redirects.eq(schema::links::redirects + 1))
             .execute(&mut db)
@@ -123,7 +116,6 @@ async fn link(Path(params): Path<Params>) -> Result<impl IntoResponse, StatusCod
     } else {
         Err(StatusCode::NOT_FOUND)
     }
-
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -181,7 +173,7 @@ async fn link_info(Path(params): Path<Params>) -> Result<impl IntoResponse, Stat
 
     Ok(Json(LinkDto {
         link,
-        targets: results
+        targets: results,
     }))
 }
 
@@ -211,6 +203,6 @@ async fn static_path(Path(path): Path<String>) -> impl IntoResponse {
 
             response.body(body::boxed(Full::from(file.contents())))
                 .unwrap()
-        },
+        }
     }
 }

@@ -16,9 +16,9 @@ tokio-postgres = "0.7"
 postgres-native-tls = "0.5"
 native-tls = "0.2"
 tracing = "0.1"
-diesel_migrations = "2.0.0-rc.1"
-diesel = { version = "2.0.0-rc.1", features = ["postgres"] }
-diesel-async = { git = "https://github.com/weiznich/diesel_async" }
+diesel_migrations = "2"
+diesel = { version = "2", features = ["postgres"] }
+diesel-async = { version = "0.1", features = ["tokio-postgres", "postgres", "tokio"] }
 dotenv = "0.15"
 rand = "0.8"
 nanoid = "0.4"
