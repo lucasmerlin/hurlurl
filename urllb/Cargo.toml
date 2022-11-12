@@ -18,7 +18,9 @@ native-tls = "0.2"
 tracing = "0.1"
 diesel_migrations = "2"
 diesel = { version = "2", features = ["postgres"] }
-diesel-async = { version = "0.1", features = ["tokio-postgres", "postgres", "tokio"] }
+diesel-async = { version = "0.1", features = ["tokio-postgres", "postgres", "tokio", "bb8"] }
+bb8 = "0.8"
+bb8-postgres = "0.8"
 dotenv = "0.15"
 rand = "0.8"
 nanoid = "0.4"
@@ -28,5 +30,6 @@ validator = "0.15"
 
 cached = "0.40"
 anyhow = "1"
+lazy_static = "1.4.0"
 
 shared = { path = "../shared", features = ["diesel"] }

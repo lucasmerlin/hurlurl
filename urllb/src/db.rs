@@ -2,45 +2,22 @@ extern crate dotenv;
 
 use diesel::prelude::*;
 
-use diesel_async::{AsyncPgConnection};
+use diesel_async::AsyncPgConnection;
 use diesel_migrations::{
     embed_migrations, EmbeddedMigrations, HarnessWithOutput, MigrationHarness,
 };
 use dotenv::dotenv;
-use native_tls::TlsConnector;
-use postgres_native_tls::MakeTlsConnector;
+
+use bb8::{Pool as BB8Pool, PooledConnection};
+use diesel::Connection as DieselConnection;
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use std::env;
 use std::io::stdout;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-pub async fn db() -> AsyncPgConnection {
-    dotenv().ok();
-
-    let connector = TlsConnector::builder()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
-    let connector = MakeTlsConnector::new(connector);
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-    let (client, connection) = tokio_postgres::connect(database_url.as_str(), connector)
-        .await
-        .expect("Error connecting to database");
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-
-    let connection = AsyncPgConnection::try_from(client)
-        .await
-        .expect("Error connecting to database");
-
-    connection
-}
+pub type Pool = BB8Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
+pub type Connection<'a> = PooledConnection<'a, AsyncDieselConnectionManager<AsyncPgConnection>>;
 
 pub fn old_connection() -> PgConnection {
     dotenv().ok();

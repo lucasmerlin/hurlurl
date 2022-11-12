@@ -1,29 +1,40 @@
+use cached::lazy_static::lazy_static;
 use diesel::dsl::sum;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 
-use cached::proc_macro::cached;
+use cached::{Cached, TimedCache};
 use shared::TotalStats;
 
-use crate::db::db;
+use crate::db::Connection;
 use crate::schema::links::dsl::*;
 use crate::schema::targets::dsl::targets;
 
-#[cached(time = 60, result = true)]
-pub async fn total_stats() -> anyhow::Result<TotalStats> {
-    let mut db = db().await;
+use std::sync::Mutex;
 
-    let link_count = links.count().first(&mut db).await?;
+lazy_static! {
+    static ref CACHE: Mutex<TimedCache<usize, TotalStats>> =
+        Mutex::new(TimedCache::with_lifespan(120));
+}
 
-    let target_count = targets.count().first(&mut db).await?;
+pub async fn total_stats<'a>(connection: &mut Connection<'a>) -> anyhow::Result<TotalStats> {
+    if let Some(stats) = CACHE.lock().unwrap().cache_get(&0) {
+        return Ok(stats.clone());
+    }
 
-    let redirect_count: Option<i64> = links.select(sum(redirects)).first(&mut db).await?;
+    let link_count = links.count().first(connection).await?;
+
+    let target_count = targets.count().first(connection).await?;
+
+    let redirect_count: Option<i64> = links.select(sum(redirects)).first(connection).await?;
 
     let stats = TotalStats {
         links: link_count,
         targets: target_count,
         redirects: redirect_count.unwrap_or(0),
     };
+
+    CACHE.lock().unwrap().cache_set(0, stats.clone());
 
     Ok(stats)
 }

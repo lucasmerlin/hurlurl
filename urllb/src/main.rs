@@ -1,80 +1,72 @@
 #[macro_use]
 extern crate diesel;
 
+use std::env;
 use std::net::SocketAddr;
 
-use axum::{
-    body,
-    http::StatusCode,
-    Json,
-    response::IntoResponse,
-    Router, routing::{get, post},
-};
 use axum::body::{Empty, Full};
 use axum::extract::Path;
 use axum::http::{header, HeaderValue};
 use axum::response::{Redirect, Response};
 use axum::routing::get_service;
-use diesel::associations::HasTable;
-use diesel::expression_methods::ExpressionMethods;
-use diesel::QueryDsl;
-use diesel_async::RunQueryDsl;
-use include_dir::{Dir, include_dir};
-use nanoid::nanoid;
+use axum::{
+    body,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, post},
+    Extension, Json, Router,
+};
+
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+
+use include_dir::{include_dir, Dir};
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use tokio::io;
-use tower_http::cors;
-use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 use validator::Validate;
 
-use crate::db::{db, old_connection, run_migrations};
-use crate::models::{CreateLinkDto, Link, LinkDto, NewLink, NewTarget, Target};
-use crate::schema::links::dsl::*;
-use crate::schema::links::url;
-use crate::schema::targets::dsl::targets;
-use crate::schema::targets::link_id;
+use crate::db::{old_connection, run_migrations};
+use crate::models::{CreateLinkDto, LinkDto};
 
+use crate::db::Pool;
+use crate::service::{create_link, get_link_and_targets, increase_redirect_count};
 mod db;
 mod models;
 mod schema;
+mod service;
 mod stats;
 
 static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../web/dist");
 
 #[tokio::main]
 async fn main() {
-    // run migrations
     {
         let mut db = old_connection();
         run_migrations(&mut db);
     }
 
-    // initialize tracing
     tracing_subscriber::fmt::init();
 
-    let cors = CorsLayer::new()
-        // allow requests from any origin
-        .allow_methods(cors::Any)
-        .allow_headers(cors::Any)
-        .allow_origin(cors::Any);
+    let manager = AsyncDieselConnectionManager::new(
+        env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
+    );
+
+    let pool = Pool::builder().build(manager).await.unwrap();
 
     let serve_dir_service = get_service(
         ServeDir::new(option_env!("STATIC_DIR").unwrap_or("../web/dist"))
             .precompressed_gzip()
-            .append_index_html_on_directories(true)
+            .append_index_html_on_directories(true),
     )
-        .handle_error(|error: io::Error| async move {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Unhandled internal error: {}", error),
-            )
-        });
+    .handle_error(|error: io::Error| async move {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Unhandled internal error: {}", error),
+        )
+    });
 
-    // build our application with a route
     let app = Router::new()
-        // `GET /` goes to `root`
         .route("/", serve_dir_service.clone())
         .route("/api/stats", get(total_stats))
         .route("/info/*path", get(root))
@@ -82,10 +74,8 @@ async fn main() {
         .route("/api/links/:link", get(link_info))
         .nest("/static", serve_dir_service)
         .route("/:link", get(link).post(post_link))
-        .layer(cors);
+        .layer(Extension(pool));
 
-    // run our app with hyper
-    // `axum::Server` is a re-export of `hyper::Server`
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
@@ -94,39 +84,28 @@ async fn main() {
         .unwrap();
 }
 
-// basic handler that responds with a static string
 async fn root() -> impl IntoResponse {
     static_path(Path("index.html".to_string())).await
 }
 
-async fn link(Path(params): Path<Params>) -> Result<impl IntoResponse, StatusCode> {
-    let mut db = db().await;
-    let link: Link = links
-        .filter(url.eq(params.link))
-        .first::<Link>(&mut db)
-        .await
-        .map_err(|_| StatusCode::NOT_FOUND)?;
-
-    let results: Vec<Target> = targets
-        .filter(link_id.eq(link.id))
-        .limit(10)
-        .load::<Target>(&mut db)
+async fn link(
+    Path(params): Path<Params>,
+    Extension(pool): Extension<Pool>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let mut connection = pool
+        .get()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+    let (link, target_results) = get_link_and_targets(&mut connection, &params.link)
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND)?;
+
     // select random target from results
-    let target = results.choose(&mut rand::thread_rng());
+    let target = target_results.choose(&mut rand::thread_rng());
 
     if let Some(target) = target {
-        diesel::update(&link)
-            .set(schema::links::redirects.eq(schema::links::redirects + 1))
-            .execute(&mut db)
-            .await
-            .ok();
-
-        diesel::update(target)
-            .set(schema::targets::redirects.eq(schema::targets::redirects + 1))
-            .execute(&mut db)
+        increase_redirect_count(&mut connection, &link, target)
             .await
             .ok();
 
@@ -145,34 +124,18 @@ struct Params {
     link: String,
 }
 
-async fn post_link(Json(body): Json<CreateLinkDto>) -> Result<impl IntoResponse, StatusCode> {
+async fn post_link(
+    Json(body): Json<CreateLinkDto>,
+    Extension(pool): Extension<Pool>,
+) -> Result<impl IntoResponse, StatusCode> {
     body.validate().map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    let mut db = db().await;
-
-    let link = NewLink {
-        url: &body.url.unwrap_or_else(|| nanoid!(5)),
-        permanent_redirect: body.permanent_redirect,
-    };
-
-    let link = diesel::insert_into(links::table())
-        .values(&link)
-        .get_result::<Link>(&mut db)
+    let mut connection = pool
+        .get()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let target_results = diesel::insert_into(targets::table())
-        .values(
-            &body
-                .targets
-                .iter()
-                .map(|target| NewTarget {
-                    link_id: link.id,
-                    target_url: &target.target_url,
-                })
-                .collect::<Vec<_>>(),
-        )
-        .get_results::<Target>(&mut db)
+    let (link, target_results) = create_link(&mut connection, &body)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -182,20 +145,18 @@ async fn post_link(Json(body): Json<CreateLinkDto>) -> Result<impl IntoResponse,
     }))
 }
 
-async fn link_info(Path(params): Path<Params>) -> Result<impl IntoResponse, StatusCode> {
-    let mut db = db().await;
-    let link: Link = links
-        .filter(url.eq(params.link))
-        .first::<Link>(&mut db)
-        .await
-        .map_err(|_| StatusCode::NOT_FOUND)?;
-
-    let results: Vec<Target> = targets
-        .filter(link_id.eq(link.id))
-        .limit(10)
-        .load::<Target>(&mut db)
+async fn link_info(
+    Path(params): Path<Params>,
+    Extension(pool): Extension<Pool>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let mut connection = pool
+        .get()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let (link, results) = get_link_and_targets(&mut connection, &params.link)
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND)?;
 
     Ok(Json(LinkDto {
         link,
@@ -203,8 +164,10 @@ async fn link_info(Path(params): Path<Params>) -> Result<impl IntoResponse, Stat
     }))
 }
 
-async fn total_stats() -> Result<impl IntoResponse, StatusCode> {
-    let stats = stats::total_stats()
+async fn total_stats(Extension(pool): Extension<Pool>) -> Result<impl IntoResponse, StatusCode> {
+    let mut connection = pool.get().await.map_err(|_| StatusCode::NOT_FOUND)?;
+
+    let stats = stats::total_stats(&mut connection)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
