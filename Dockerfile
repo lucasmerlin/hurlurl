@@ -22,13 +22,15 @@ RUN (cd web && RUSTFLAGS=--cfg=web_sys_unstable_apis ../trunk build --release --
 RUN (cd web/dist && gzip * -k)
 RUN RUSTFLAGS=--cfg=web_sys_unstable_apis cargo build --release
 
+RUN ls -la web/dist
+
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bullseye-slim AS runtime
 RUN apt update && apt install -y libpq-dev libssl-dev
 WORKDIR app
 EXPOSE 3000
 COPY --from=builder /app/target/release/urllb /usr/local/bin
-COPY --from=builder /app/web/dist/* /app/web/dist
-RUN ls /app/web
-RUN ls /app/web/dist
+COPY --from=builder /app/web/dist/* /app/web/dist/
+RUN ls -la /app/web
+RUN ls -la /app/web/dist
 ENTRYPOINT ["/usr/local/bin/urllb"]
