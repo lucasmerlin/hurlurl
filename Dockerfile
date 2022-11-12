@@ -29,4 +29,6 @@ WORKDIR app
 EXPOSE 3000
 COPY --from=builder /app/target/release/urllb /usr/local/bin
 COPY --from=builder /app/web/dist/* /app/web/dist
+RUN ls /app/web
+RUN ls /app/web/dist
 ENTRYPOINT ["/usr/local/bin/urllb"]
