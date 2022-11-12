@@ -2,7 +2,9 @@
 # cargo-chef and the Rust toolchain
 FROM rust:1-slim AS builder
 WORKDIR app
-RUN apt update && apt install -y curl
+RUN apt update && apt install -y curl wget pkg-config libssl-dev libpq-dev
+RUN rustup target add wasm32-unknown-unknown
+
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt install -y nodejs
 RUN npm i -g yarn
 
@@ -26,5 +28,5 @@ RUN apt update && apt install -y libpq-dev libssl-dev
 WORKDIR app
 EXPOSE 3000
 COPY --from=builder /app/target/release/urllb /usr/local/bin
-COPY --from=builder /app/web/dist/**/* /app/web/dist
+COPY --from=builder /app/web/dist/* /app/web/dist
 ENTRYPOINT ["/usr/local/bin/urllb"]
