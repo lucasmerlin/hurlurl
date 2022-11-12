@@ -49,11 +49,6 @@ jobs:
           password: '${{ steps.auth.outputs.access_token }}'
           registry: '${{ env.GAR_LOCATION }}-docker.pkg.dev'
 
-      # Docker cache
-      # Disabled because it's really slow
-#      - uses: satackey/action-docker-layer-caching@v0.0.11
-#        continue-on-error: true
-
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
@@ -63,10 +58,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and Push Container
-        run: |-
-          docker build -t "${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}" ./
-          docker push "${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}"
       # END - Docker auth and build
 
       - name: Deploy to Cloud Run
