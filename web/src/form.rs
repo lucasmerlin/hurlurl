@@ -4,15 +4,13 @@ use gloo_net::http::Request;
 use shared::{CreateLinkDto, CreateTargetDto, LinkDto};
 use validator::Validate;
 use wasm_bindgen::JsCast;
-use web_sys::{Event, HtmlInputElement, KeyboardEvent};
-use yew::{function_component, html, use_node_ref, use_state, Callback, Html};
+use web_sys::{Event, HtmlInputElement};
+use yew::{function_component, html, use_state, Callback, Html};
 use yew_router::history::History;
 use yew_router::hooks::use_history;
 
 #[function_component(Form)]
 pub fn form() -> Html {
-    let input_ref = use_node_ref();
-
     let targets = use_state::<Vec<CreateTargetDto>, _>(|| vec![]);
 
     let permanent_redirect = use_state(|| false);
@@ -50,7 +48,7 @@ pub fn form() -> Html {
     };
 
     let on_target_change = {
-        let mut targets = targets.clone();
+        let targets = targets.clone();
         Callback::from(move |(e, i): (Event, usize)| {
             let value = e
                 .target()
@@ -106,20 +104,23 @@ pub fn form() -> Html {
     html! {
         <>
             { targets.iter().enumerate().map(|(i, target)| {
-
                 let on_target_change = on_target_change.clone();
-
                 html! {
-
                     <div class="form-control">
-                        <input autofocus={true} type="text" placeholder="Enter URLs" class={format!("input input-bordered {}", errors[i].map(|e| "input-error").unwrap_or(""))} value={Some(target.target_url.clone())} onchange={move |e| {on_target_change.emit((e, i));}} />
+                        <input
+                            autofocus={true}
+                            type="text"
+                            placeholder="Enter URLs"
+                            class={format!("input input-bordered {}", errors[i].map(|_e| "input-error").unwrap_or(""))}
+                            value={Some(target.target_url.clone())}
+                            onchange={move |e| {on_target_change.emit((e, i));}}
+                        />
                         if let Some(error) = errors[i] {
                             <label class="label">
                                 <span class="label-text-alt text-error">{error}</span>
                             </label>
                         }
                     </div>
-
                 }
             }).collect::<Html>() }
 

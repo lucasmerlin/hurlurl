@@ -1,6 +1,3 @@
-use std::ops::{Deref, DerefMut};
-
-use serde::Serialize;
 use yew::prelude::*;
 use yew_router::prelude::*;
 use yew_router::Routable;

@@ -1,6 +1,5 @@
 use super::schema::links;
 use super::schema::targets;
-use crate::{Deserialize, Serialize};
 
 pub use shared::*;
 

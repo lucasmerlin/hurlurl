@@ -2,4 +2,3 @@
 
 [workspace]
 members = ["urllb", "web", "shared"]
-validator = "0.15"

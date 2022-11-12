@@ -1,8 +1,8 @@
 extern crate dotenv;
 
 use diesel::prelude::*;
-use diesel::{QueryDsl, RunQueryDsl, Table};
-use diesel_async::{AsyncConnection, AsyncPgConnection};
+
+use diesel_async::{AsyncPgConnection};
 use diesel_migrations::{
     embed_migrations, EmbeddedMigrations, HarnessWithOutput, MigrationHarness,
 };

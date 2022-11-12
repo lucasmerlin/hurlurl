@@ -1,22 +1,10 @@
-use std::ops::{Deref, DerefMut};
-
-use futures_util::TryFutureExt;
-use gloo_net::http::Request;
-use gloo_net::Error;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
-use wasm_bindgen::JsValue;
-use wasm_bindgen_futures::spawn_local;
-use web_sys::{window, HtmlInputElement};
+use web_sys::window;
 use yew::function_component;
 use yew::prelude::*;
-use yew_hooks::use_async;
-use yew_router::prelude::*;
-use yew_router::Routable;
 
 use crate::header::Header;
-use crate::Route;
-use shared::{CreateLinkDto, LinkDto};
+
+use shared::LinkDto;
 
 use crate::permanent_redirect_checkbox::PermanentRedirectCheckbox;
 use crate::use_fetch::use_fetch;
@@ -47,7 +35,7 @@ pub fn info(props: &InfoProps) -> Html {
             <div class="flex items-center justify-center">
 
                 { if let Some(data) = data.as_ref() {
-                    let url = format!("/{}", &data.link.url);
+                    let _url = format!("/{}", &data.link.url);
                     html!{<div>
 
                         <h1 class="text-5xl my-5">{"Stats"}</h1>

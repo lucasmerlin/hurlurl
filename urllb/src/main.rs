@@ -16,9 +16,9 @@ use axum::{
 };
 use diesel::associations::HasTable;
 use diesel::expression_methods::ExpressionMethods;
-use diesel::{Connection, QueryDsl};
+use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
-use diesel_migrations::MigrationHarness;
+
 use include_dir::{include_dir, Dir};
 use nanoid::nanoid;
 use rand::seq::SliceRandom;
