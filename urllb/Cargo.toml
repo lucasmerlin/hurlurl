@@ -26,4 +26,7 @@ include_dir = "0.7"
 mime_guess = "2"
 validator = "0.15"
 
+cached = "0.40"
+anyhow = "1"
+
 shared = { path = "../shared", features = ["diesel"] }

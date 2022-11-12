@@ -31,6 +31,7 @@ use crate::schema::targets::link_id;
 mod db;
 mod models;
 mod schema;
+mod stats;
 
 static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../web/dist");
 
@@ -57,6 +58,7 @@ async fn main() {
     let app = Router::new()
         // `GET /` goes to `root`
         .route("/", get(root))
+        .route("/api/stats", get(total_stats))
         .route("/info/*path", get(root))
         .route("/api/links", post(post_link))
         .route("/api/links/:link", get(link_info))
@@ -175,6 +177,13 @@ async fn link_info(Path(params): Path<Params>) -> Result<impl IntoResponse, Stat
         link,
         targets: results,
     }))
+}
+
+async fn total_stats() -> Result<impl IntoResponse, StatusCode> {
+    let stats = stats::total_stats().await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(stats))
 }
 
 async fn static_path(Path(path): Path<String>) -> impl IntoResponse {

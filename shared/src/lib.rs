@@ -55,3 +55,10 @@ pub struct LinkDto {
 
     pub targets: Vec<Target>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TotalStats {
+    pub links: i64,
+    pub redirects: i64,
+    pub targets: i64,
+}
