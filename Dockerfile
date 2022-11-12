@@ -28,6 +28,7 @@ COPY . .
 RUN yarn install --frozen-lockfile
 RUN yarn tailwind:build
 RUN (cd web && RUSTFLAGS=--cfg=web_sys_unstable_apis ../trunk build --release --public-url static)
+RUN (cd web/dist && gzip * -k)
 RUN RUSTFLAGS=--cfg=web_sys_unstable_apis cargo build --release
 
 # We do not need the Rust toolchain to run the binary!
@@ -36,4 +37,5 @@ RUN apt update && apt install -y libpq-dev libssl-dev
 WORKDIR app
 EXPOSE 3000
 COPY --from=builder /app/target/release/urllb /usr/local/bin
+COPY --from=builder /app/web/dist/**/* /app/web/dist
 ENTRYPOINT ["/usr/local/bin/urllb"]

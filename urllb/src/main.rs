@@ -3,28 +3,30 @@ extern crate diesel;
 
 use std::net::SocketAddr;
 
+use axum::{
+    body,
+    http::StatusCode,
+    Json,
+    response::IntoResponse,
+    Router, routing::{get, post},
+};
 use axum::body::{Empty, Full};
 use axum::extract::Path;
 use axum::http::{header, HeaderValue};
 use axum::response::{Redirect, Response};
-use axum::{
-    body,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::{get, post},
-    Json, Router,
-};
+use axum::routing::get_service;
 use diesel::associations::HasTable;
 use diesel::expression_methods::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
-
-use include_dir::{include_dir, Dir};
+use include_dir::{Dir, include_dir};
 use nanoid::nanoid;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
+use tokio::io;
 use tower_http::cors;
 use tower_http::cors::CorsLayer;
+use tower_http::services::ServeDir;
 use validator::Validate;
 
 use crate::db::{db, old_connection, run_migrations};
@@ -58,15 +60,27 @@ async fn main() {
         .allow_headers(cors::Any)
         .allow_origin(cors::Any);
 
+    let serve_dir_service = get_service(
+        ServeDir::new(option_env!("STATIC_DIR").unwrap_or("../web/dist"))
+            .precompressed_gzip()
+            .append_index_html_on_directories(true)
+    )
+        .handle_error(|error: io::Error| async move {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Unhandled internal error: {}", error),
+            )
+        });
+
     // build our application with a route
     let app = Router::new()
         // `GET /` goes to `root`
-        .route("/", get(root))
+        .route("/", serve_dir_service.clone())
         .route("/api/stats", get(total_stats))
         .route("/info/*path", get(root))
         .route("/api/links", post(post_link))
         .route("/api/links/:link", get(link_info))
-        .route("/static/*path", get(static_path))
+        .nest("/static", serve_dir_service)
         .route("/:link", get(link).post(post_link))
         .layer(cors);
 
