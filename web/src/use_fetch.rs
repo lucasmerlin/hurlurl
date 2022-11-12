@@ -3,17 +3,16 @@ use gloo_net::http::Request;
 use serde::de::DeserializeOwned;
 use wasm_bindgen_futures::spawn_local;
 use yew::{use_effect_with_deps, use_state};
-use shared::LinkDto;
 
-pub fn use_fetch(url: &str) -> Option<LinkDto> {
-    let data = use_state::<Option<LinkDto>, _>(|| None);
+pub fn use_fetch<T: DeserializeOwned + Clone + 'static>(url: &str) -> Option<T> {
+    let data = use_state::<Option<T>, _>(|| None);
 
     let cloned_data = data.clone();
     use_effect_with_deps(|link| {
         let link = link[0].clone();
         spawn_local(
             async move {
-                let result = fetch::<LinkDto>(&link).await;
+                let result = fetch::<T>(&link).await;
                 cloned_data.set(result.ok());
             }
         );

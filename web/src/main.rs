@@ -17,6 +17,7 @@ mod form;
 mod header;
 mod permanent_redirect_checkbox;
 mod imprint;
+mod total_stats;
 
 #[derive(Clone, Routable, PartialEq)]
 pub enum Route {
