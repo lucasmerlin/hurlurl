@@ -1,17 +1,37 @@
 use crate::permanent_redirect_checkbox::PermanentRedirectCheckbox;
 use crate::Route;
 use gloo_net::http::Request;
+use serde::{Deserialize, Serialize};
 use shared::{CreateLinkDto, CreateTargetDto, LinkDto};
 use validator::Validate;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{Event, HtmlInputElement};
 use yew::{function_component, html, use_state, Callback, Html};
 use yew_router::history::History;
 use yew_router::hooks::use_history;
 
+#[derive(Serialize, Deserialize)]
+struct PlausibleProps {
+    permanent_redirect: bool,
+    targets: usize,
+}
+
+#[wasm_bindgen]
+extern "C" {
+    fn plausible(s: &str, props: JsValue);
+}
+
 #[function_component(Form)]
 pub fn form() -> Html {
     let targets = use_state::<Vec<CreateTargetDto>, _>(|| vec![]);
+
+    let plausible_event = |props: PlausibleProps| {
+        plausible(
+            "Create hurlurl",
+            serde_wasm_bindgen::to_value(&props).unwrap(),
+        );
+    };
 
     let permanent_redirect = use_state(|| false);
 
@@ -27,8 +47,6 @@ pub fn form() -> Html {
         .collect::<Vec<_>>();
 
     let has_error = errors.iter().find(|v| v.is_some()).is_some();
-
-    log::info!("{:?}", targets);
 
     let history = use_history().unwrap();
 
@@ -90,6 +108,11 @@ pub fn form() -> Html {
                 history.push(Route::Link {
                     link: response.link.url,
                 });
+
+                plausible_event(PlausibleProps {
+                    permanent_redirect: *permanent_redirect,
+                    targets: targets.len(),
+                })
             });
         })
     };
