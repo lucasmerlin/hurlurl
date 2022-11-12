@@ -4,6 +4,7 @@ FROM lukemathwalker/cargo-chef:latest-rust-1-slim AS chef
 WORKDIR app
 RUN apt update && apt install -y curl
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt install -y nodejs
+RUN npm i -g yarn
 
 ENV TRUNK_VERSION="v0.16.0"
 
@@ -24,8 +25,8 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
 COPY . .
-RUN npm ci
-RUN npm run tailwind:build
+RUN yarn install --frozen-lockfile
+RUN yarn tailwind:build
 RUN (cd web && RUSTFLAGS=--cfg=web_sys_unstable_apis ../trunk build --release --public-url static)
 RUN RUSTFLAGS=--cfg=web_sys_unstable_apis cargo build --release
 
