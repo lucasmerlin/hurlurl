@@ -3,3 +3,7 @@
 /web/dist
 node_modules
 /web/output.css
+/cloud_sql_proxy
+/.pnp.cjs
+/.pnp.loader.mjs
+/.yarn/install-state.gz
