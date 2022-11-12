@@ -20,7 +20,7 @@ RUN yarn install --frozen-lockfile
 RUN yarn tailwind:build
 RUN (cd web && RUSTFLAGS=--cfg=web_sys_unstable_apis ../trunk build --release --public-url static)
 RUN (cd web/dist && gzip * -k)
-RUN RUSTFLAGS=--cfg=web_sys_unstable_apis cargo build --release
+RUN STATIC_DIR="/app/web/dist" RUSTFLAGS=--cfg=web_sys_unstable_apis cargo build --release
 
 RUN ls -la web/dist
 
