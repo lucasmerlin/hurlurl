@@ -24,12 +24,15 @@ yarn install
 # Start Postgres
 docker compose up -d
 
-# Start backend
-yarn start:backend
+# Run the following commands in separate terminals
+# The order is important (otherwise there will be missing files)
+
+# Watch tailwind css changes
+yarn tailwind
 
 # Start frontend
 yarn start
 
-# Watch tailwind css changes
-yarn tailwind
+# Start backend
+yarn start:backend
 ```
