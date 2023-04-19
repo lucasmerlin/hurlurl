@@ -1,5 +1,5 @@
 use web_sys::window;
-use yew::{function_component, html};
+use yew::{function_component, html, Html};
 
 #[function_component(Imprint)]
 pub fn imprint() -> Html {

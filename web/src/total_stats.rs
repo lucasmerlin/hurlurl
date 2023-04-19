@@ -1,6 +1,6 @@
 use crate::use_fetch::use_fetch;
 use shared::TotalStats as Stats;
-use yew::{function_component, html};
+use yew::{function_component, html, Html};
 
 #[function_component(TotalStats)]
 pub fn total_stats() -> Html {

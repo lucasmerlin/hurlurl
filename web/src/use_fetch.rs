@@ -2,8 +2,9 @@ use futures_util::TryFutureExt;
 use gloo_net::http::Request;
 use serde::de::DeserializeOwned;
 use wasm_bindgen_futures::spawn_local;
-use yew::{use_effect_with_deps, use_state};
+use yew::{hook, use_effect_with_deps, use_state};
 
+#[hook]
 pub fn use_fetch<T: DeserializeOwned + Clone + 'static>(url: &str) -> Option<T> {
     let data = use_state::<Option<T>, _>(|| None);
 

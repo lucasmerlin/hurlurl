@@ -8,8 +8,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{Event, HtmlInputElement};
 use yew::{function_component, html, use_state, Callback, Html};
-use yew_router::history::History;
-use yew_router::hooks::use_history;
+use yew_router::hooks::use_navigator;
 
 #[derive(Serialize, Deserialize)]
 struct PlausibleProps {
@@ -48,7 +47,7 @@ pub fn form() -> Html {
 
     let has_error = errors.iter().find(|v| v.is_some()).is_some();
 
-    let history = use_history().unwrap();
+    let navigator = use_navigator().unwrap();
 
     let add_target = {
         let targets = targets.clone();
@@ -83,11 +82,11 @@ pub fn form() -> Html {
 
     let create_link = {
         let targets = targets.clone();
-        let history = history.clone();
+        let navigator = navigator.clone();
         let permanent_redirect = permanent_redirect.clone();
         Callback::from(move |_| {
             let targets = targets.clone();
-            let history = history.clone();
+            let navigator = navigator.clone();
             let permanent_redirect = permanent_redirect.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 let response = Request::post("/api/links")
@@ -105,7 +104,7 @@ pub fn form() -> Html {
                     .await
                     .unwrap();
 
-                history.push(Route::Link {
+                navigator.push(&Route::Link {
                     link: response.link.url,
                 });
 

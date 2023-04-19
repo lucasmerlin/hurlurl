@@ -26,7 +26,7 @@ pub enum Route {
     Imprint,
 }
 
-fn switch(route: &Route) -> Html {
+fn switch(route: Route) -> Html {
     match route {
         Route::Home => html! { <Home/> },
         Route::Link { link } => html! {<Info link={link.clone()}/>},
@@ -38,7 +38,7 @@ fn switch(route: &Route) -> Html {
 fn app() -> Html {
     html! {
         <BrowserRouter>
-            <Switch<Route> render={Switch::render(switch)} />
+            <Switch<Route> render={switch} />
         </BrowserRouter>
     }
 }
@@ -46,5 +46,5 @@ fn app() -> Html {
 fn main() {
     wasm_logger::init(wasm_logger::Config::default());
 
-    yew::start_app::<App>();
+    yew::Renderer::<App>::new().render();
 }
