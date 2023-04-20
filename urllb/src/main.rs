@@ -66,13 +66,16 @@ async fn main() {
         )
     });
 
+    let static_router = Router::new()
+        .route("/*path", serve_dir_service.clone());
+
     let app = Router::new()
         .route("/", serve_dir_service.clone())
         .route("/api/stats", get(total_stats))
         .route("/info/*path", get(root))
         .route("/api/links", post(post_link))
         .route("/api/links/:link", get(link_info))
-        .route("/static", serve_dir_service)
+        .nest("/static", static_router)
         .route("/:link", get(link).post(post_link))
         .with_state(pool);
 
