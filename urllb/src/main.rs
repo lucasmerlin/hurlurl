@@ -5,7 +5,7 @@ use std::env;
 use std::net::SocketAddr;
 
 use axum::body::{Empty, Full};
-use axum::extract::Path;
+use axum::extract::{Path, State};
 use axum::http::{header, HeaderValue};
 use axum::response::{Redirect, Response};
 use axum::routing::get_service;
@@ -14,7 +14,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Extension, Json, Router,
+    Json, Router,
 };
 
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
@@ -72,9 +72,9 @@ async fn main() {
         .route("/info/*path", get(root))
         .route("/api/links", post(post_link))
         .route("/api/links/:link", get(link_info))
-        .nest("/static", serve_dir_service)
+        .route("/static", serve_dir_service)
         .route("/:link", get(link).post(post_link))
-        .layer(Extension(pool));
+        .with_state(pool);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::debug!("listening on {}", addr);
@@ -90,7 +90,7 @@ async fn root() -> impl IntoResponse {
 
 async fn link(
     Path(params): Path<Params>,
-    Extension(pool): Extension<Pool>,
+    State(pool): State<Pool>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut connection = pool
         .get()
@@ -125,8 +125,8 @@ struct Params {
 }
 
 async fn post_link(
+    State(pool): State<Pool>,
     Json(body): Json<CreateLinkDto>,
-    Extension(pool): Extension<Pool>,
 ) -> Result<impl IntoResponse, StatusCode> {
     body.validate().map_err(|_| StatusCode::BAD_REQUEST)?;
 
@@ -147,7 +147,7 @@ async fn post_link(
 
 async fn link_info(
     Path(params): Path<Params>,
-    Extension(pool): Extension<Pool>,
+    State(pool): State<Pool>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut connection = pool
         .get()
@@ -164,7 +164,7 @@ async fn link_info(
     }))
 }
 
-async fn total_stats(Extension(pool): Extension<Pool>) -> Result<impl IntoResponse, StatusCode> {
+async fn total_stats(State(pool): State<Pool>) -> Result<impl IntoResponse, StatusCode> {
     let mut connection = pool.get().await.map_err(|_| StatusCode::NOT_FOUND)?;
 
     let stats = stats::total_stats(&mut connection)

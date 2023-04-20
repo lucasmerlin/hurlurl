@@ -10,5 +10,5 @@ default = []
 
 [dependencies]
 serde = { version = "1", features = ["serde_derive"] }
-diesel = { version = "2.0.0-rc.1", optional = true }
+diesel = { version = "2.0.4", optional = true }
 validator = { version = "0.16",  features = ["derive"] }

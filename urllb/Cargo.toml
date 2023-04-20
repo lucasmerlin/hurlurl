@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.5"
+axum = "0.6"
 tower = "0.4"
 tower-http = { version = "0.3", features = ["cors", "fs", "compression-gzip"] }
 serde = "1"
@@ -17,8 +17,8 @@ postgres-native-tls = "0.5"
 native-tls = "0.2"
 tracing = "0.1"
 diesel_migrations = "2"
-diesel = { version = "2", features = ["postgres"] }
-diesel-async = { version = "0.1", features = ["tokio-postgres", "postgres", "tokio", "bb8"] }
+diesel = { version = "2.0.4", features = ["postgres"] }
+diesel-async = { version = "0.2", features = ["tokio-postgres", "postgres", "tokio", "bb8"] }
 bb8 = "0.8"
 bb8-postgres = "0.8"
 dotenv = "0.15"
@@ -26,9 +26,9 @@ rand = "0.8"
 nanoid = "0.4"
 include_dir = "0.7"
 mime_guess = "2"
-validator = "0.15"
+validator = "0.16"
 
-cached = "0.40"
+cached = "0.43"
 anyhow = "1"
 lazy_static = "1.4.0"
 
