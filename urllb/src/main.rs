@@ -46,7 +46,7 @@ struct Config {
 
 #[tokio::main]
 async fn main() {
-    dotenvy::dotenv().unwrap();
+    dotenvy::dotenv().ok();
     let config: Config = envy::from_env().unwrap();
 
     {
