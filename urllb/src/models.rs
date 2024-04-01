@@ -8,6 +8,7 @@ pub use shared::*;
 pub struct NewLink<'a> {
     pub url: &'a str,
     pub permanent_redirect: bool,
+    pub created_by_ip: Option<ipnet::IpNet>,
 }
 
 #[derive(Insertable)]

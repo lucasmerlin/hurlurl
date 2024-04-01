@@ -17,6 +17,10 @@ pub struct Link {
     pub redirects: i32,
 
     pub permanent_redirect: bool,
+    pub fraud: bool,
+    pub fraud_reason: Option<String>,
+    #[serde(skip, default)]
+    pub created_by_ip: Option<ipnet::IpNet>,
 }
 
 #[cfg_attr(feature = "diesel", derive(Queryable, Identifiable))]

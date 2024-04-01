@@ -6,6 +6,9 @@ diesel::table! {
         url -> Varchar,
         redirects -> Int4,
         permanent_redirect -> Bool,
+        fraud -> Bool,
+        fraud_reason -> Nullable<Text>,
+        created_by_ip -> Nullable<Inet>,
     }
 }
 
@@ -20,4 +23,7 @@ diesel::table! {
 
 diesel::joinable!(targets -> links (link_id));
 
-diesel::allow_tables_to_appear_in_same_query!(links, targets,);
+diesel::allow_tables_to_appear_in_same_query!(
+    links,
+    targets,
+);

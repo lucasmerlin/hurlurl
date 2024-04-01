@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 axum = "0.6"
+axum-client-ip = "0.4"
 tower = "0.4"
 tower-http = { version = "0.3", features = ["cors", "fs", "compression-gzip"] }
 serde = "1"
@@ -19,6 +20,7 @@ tracing = "0.1"
 diesel_migrations = "2"
 diesel = { version = "2.0.4", features = ["postgres"] }
 diesel-async = { version = "0.2", features = ["tokio-postgres", "postgres", "tokio", "bb8"] }
+ipnet = "2"
 bb8 = "0.8"
 bb8-postgres = "0.8"
 dotenv = "0.15"
@@ -31,5 +33,7 @@ validator = "0.16"
 cached = "0.43"
 anyhow = "1"
 lazy_static = "1.4.0"
+envy = "0.4"
+dotenvy = "0.15"
 
 shared = { path = "../shared", features = ["diesel"] }

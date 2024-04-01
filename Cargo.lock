@@ -108,6 +108,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "axum-client-ip"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ef117890a418b7832678d9ea1e1c08456dd7b2fd1dadb9676cd6f0fe7eb4b21"
+dependencies = [
+ "axum",
+ "forwarded-header-value",
+ "serde",
+]
+
+[[package]]
 name = "axum-core"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -351,7 +362,10 @@ dependencies = [
  "bitflags",
  "byteorder",
  "diesel_derives",
+ "ipnet",
+ "ipnetwork",
  "itoa",
+ "libc",
  "pq-sys",
 ]
 
@@ -411,6 +425,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 
 [[package]]
+name = "dotenvy"
+version = "0.15.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
+
+[[package]]
+name = "envy"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f47e0157f2cb54f5ae1bd371b30a2ae4311e1c028f575cd4e81de7353215965"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "fallible-iterator"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -464,6 +493,16 @@ checksum = "5fc25a87fa4fd2094bffb06925852034d90a17f0d1e05197d4956d3555752191"
 dependencies = [
  "matches",
  "percent-encoding",
+]
+
+[[package]]
+name = "forwarded-header-value"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8835f84f38484cc86f110a805655697908257fb9a7af005234060891557198e9"
+dependencies = [
+ "nonempty",
+ "thiserror",
 ]
 
 [[package]]
@@ -907,6 +946,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ipnet"
+version = "2.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
+
+[[package]]
+name = "ipnetwork"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf466541e9d546596ee94f9f69590f89473455f88372423e0008fc1a7daf100e"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1063,6 +1117,12 @@ dependencies = [
  "security-framework-sys",
  "tempfile",
 ]
+
+[[package]]
+name = "nonempty"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9e591e719385e6ebaeb5ce5d3887f7d5676fceca6411d1925ccc95745f3d6f7"
 
 [[package]]
 name = "num_cpus"
@@ -1578,6 +1638,7 @@ name = "shared"
 version = "0.1.0"
 dependencies = [
  "diesel",
+ "ipnet",
  "serde",
  "validator",
 ]
@@ -2002,6 +2063,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "axum-client-ip",
  "bb8",
  "bb8-postgres",
  "cached",
@@ -2009,7 +2071,10 @@ dependencies = [
  "diesel-async",
  "diesel_migrations",
  "dotenv",
+ "dotenvy",
+ "envy",
  "include_dir",
+ "ipnet",
  "lazy_static",
  "mime_guess",
  "nanoid",

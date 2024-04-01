@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate diesel;
 
-use std::env;
 use std::net::SocketAddr;
 
 use axum::body::{Empty, Full};
@@ -16,9 +15,8 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-
+use axum_client_ip::{SecureClientIp, SecureClientIpSource};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
-
 use include_dir::{include_dir, Dir};
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
@@ -26,11 +24,11 @@ use tokio::io;
 use tower_http::services::ServeDir;
 use validator::Validate;
 
+use crate::db::Pool;
 use crate::db::{old_connection, run_migrations};
 use crate::models::{CreateLinkDto, LinkDto};
-
-use crate::db::Pool;
 use crate::service::{create_link, get_link_and_targets, increase_redirect_count};
+
 mod db;
 mod models;
 mod schema;
@@ -39,8 +37,17 @@ mod stats;
 
 static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../web/dist");
 
+#[derive(serde::Deserialize)]
+struct Config {
+    ip_source: SecureClientIpSource,
+    database_url: String,
+}
+
 #[tokio::main]
 async fn main() {
+    dotenvy::dotenv().unwrap();
+    let config: Config = envy::from_env().unwrap();
+
     {
         let mut db = old_connection();
         run_migrations(&mut db);
@@ -48,9 +55,7 @@ async fn main() {
 
     tracing_subscriber::fmt::init();
 
-    let manager = AsyncDieselConnectionManager::new(
-        env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
-    );
+    let manager = AsyncDieselConnectionManager::new(config.database_url);
 
     let pool = Pool::builder().build(manager).await.unwrap();
 
@@ -66,8 +71,7 @@ async fn main() {
         )
     });
 
-    let static_router = Router::new()
-        .route("/*path", serve_dir_service.clone());
+    let static_router = Router::new().route("/*path", serve_dir_service.clone());
 
     let app = Router::new()
         .route("/", serve_dir_service.clone())
@@ -77,12 +81,13 @@ async fn main() {
         .route("/api/links/:link", get(link_info))
         .nest("/static", static_router)
         .route("/:link", get(link).post(post_link))
-        .with_state(pool);
+        .with_state(pool)
+        .layer(config.ip_source.into_extension());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .unwrap();
 }
@@ -94,7 +99,7 @@ async fn root() -> impl IntoResponse {
 async fn link(
     Path(params): Path<Params>,
     State(pool): State<Pool>,
-) -> Result<impl IntoResponse, StatusCode> {
+) -> Result<Response, StatusCode> {
     let mut connection = pool
         .get()
         .await
@@ -103,6 +108,20 @@ async fn link(
     let (link, target_results) = get_link_and_targets(&mut connection, &params.link)
         .await
         .map_err(|_| StatusCode::NOT_FOUND)?;
+
+    if link.fraud {
+        return Ok(Response::builder()
+            .status(StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS)
+            .body(body::boxed(format!(
+                "The link you are trying to access has been marked as fraudulent. 
+It was probably used in a phishing attack. 
+                
+                
+The following reason was given: {}",
+                link.fraud_reason.as_deref().unwrap_or("No reason")
+            )))
+            .unwrap());
+    }
 
     // select random target from results
     let target = target_results.choose(&mut rand::thread_rng());
@@ -113,9 +132,9 @@ async fn link(
             .ok();
 
         if link.permanent_redirect {
-            Ok(Redirect::permanent(&target.target_url))
+            Ok(Redirect::permanent(&target.target_url).into_response())
         } else {
-            Ok(Redirect::temporary(&target.target_url))
+            Ok(Redirect::temporary(&target.target_url).into_response())
         }
     } else {
         Err(StatusCode::NOT_FOUND)
@@ -129,6 +148,7 @@ struct Params {
 
 async fn post_link(
     State(pool): State<Pool>,
+    SecureClientIp(ip): SecureClientIp,
     Json(body): Json<CreateLinkDto>,
 ) -> Result<impl IntoResponse, StatusCode> {
     body.validate().map_err(|_| StatusCode::BAD_REQUEST)?;
@@ -138,7 +158,7 @@ async fn post_link(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let (link, target_results) = create_link(&mut connection, &body)
+    let (link, target_results) = create_link(&mut connection, &body, ip.into())
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

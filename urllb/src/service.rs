@@ -1,10 +1,14 @@
+use std::net::{Ipv4Addr, Ipv6Addr};
+
+use anyhow::Result;
 use diesel::associations::HasTable;
 use diesel::expression_methods::ExpressionMethods;
 use diesel::QueryDsl;
-
 use diesel_async::RunQueryDsl;
-
+use ipnet::IpNet;
 use nanoid::nanoid;
+
+use shared::schema;
 
 use crate::db::Connection;
 use crate::models::{CreateLinkDto, Link, NewLink, NewTarget, Target};
@@ -12,10 +16,6 @@ use crate::schema::links::dsl::*;
 use crate::schema::links::url;
 use crate::schema::targets::dsl::targets;
 use crate::schema::targets::link_id;
-
-use anyhow::Result;
-
-use shared::schema;
 
 pub async fn get_link_and_targets<'c>(
     connection: &mut Connection<'c>,
@@ -52,11 +52,13 @@ pub async fn increase_redirect_count<'c>(
 pub async fn create_link<'c>(
     connection: &mut Connection<'c>,
     create: &CreateLinkDto,
+    user_ip: IpNet,
 ) -> Result<(Link, Vec<Target>)> {
     let link = NewLink {
         // TODO: Add some way to add custom url
         url: &nanoid!(5),
         permanent_redirect: create.permanent_redirect,
+        created_by_ip: Some(anonymize_ip(user_ip)),
     };
 
     let link = diesel::insert_into(links::table())
@@ -79,4 +81,33 @@ pub async fn create_link<'c>(
         .await?;
 
     Ok((link, target_results))
+}
+
+
+/// Truncates some bits of the IP address to anonymize it.
+pub fn anonymize_ip(
+    ip: IpNet,
+) -> IpNet {
+    match ip {
+        IpNet::V4(v4) => {
+            let octets = v4.addr().octets();
+            let new_ip = ipnet::Ipv4Net::new(Ipv4Addr::new(octets[0], octets[1], octets[2], 0), 24).unwrap();
+            IpNet::V4(new_ip)
+        }
+        IpNet::V6(v6) => {
+            let octets = v6.addr().segments();
+            let new_ip = ipnet::Ipv6Net::new(Ipv6Addr::new(
+                octets[0],
+                octets[1],
+                octets[2],
+                octets[3],
+                0,
+                0,
+                0,
+                0,
+            ), 120,
+            ).unwrap();
+            IpNet::V6(new_ip)
+        }
+    }
 }
