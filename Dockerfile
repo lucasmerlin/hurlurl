@@ -1,6 +1,6 @@
 # Leveraging the pre-built Docker images with 
 # cargo-chef and the Rust toolchain
-FROM rust:1-slim AS builder
+FROM rust:1-slim-bookworm AS builder
 WORKDIR app
 RUN apt update && apt install -y curl wget pkg-config libssl-dev libpq-dev
 RUN rustup target add wasm32-unknown-unknown
@@ -25,7 +25,7 @@ RUN STATIC_DIR="/app/web/dist" RUSTFLAGS=--cfg=web_sys_unstable_apis cargo build
 RUN ls -la web/dist
 
 # We do not need the Rust toolchain to run the binary!
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 RUN apt update && apt install -y libpq-dev libssl-dev
 WORKDIR app
 EXPOSE 3000
