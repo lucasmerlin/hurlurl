@@ -18,6 +18,7 @@ use axum::{
 use axum_client_ip::{SecureClientIp, SecureClientIpSource};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use include_dir::{include_dir, Dir};
+use lazy_static::lazy_static;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use tokio::io;
@@ -146,12 +147,28 @@ struct Params {
     link: String,
 }
 
+lazy_static! {
+    static ref BLACKLIST: Vec<String> = include_str!("blacklist.txt")
+        .lines()
+        .map(|s| s.to_string())
+        .collect();
+}
+
 async fn post_link(
     State(pool): State<Pool>,
     SecureClientIp(ip): SecureClientIp,
     Json(body): Json<CreateLinkDto>,
 ) -> Result<impl IntoResponse, StatusCode> {
     body.validate().map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    if BLACKLIST.iter().any(|b| {
+        body.targets
+            .iter()
+            .map(|t| &t.target_url)
+            .any(|t| t.contains(b))
+    }) {
+        return Err(StatusCode::FORBIDDEN);
+    }
 
     let mut connection = pool
         .get()
