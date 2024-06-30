@@ -4,3 +4,4 @@ webwave.dev
 urlz.fr
 yww.uy
 prurl.co
+steam
