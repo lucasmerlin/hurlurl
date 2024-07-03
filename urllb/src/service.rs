@@ -3,7 +3,6 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use crate::error::Result;
 use diesel::associations::HasTable;
 use diesel::expression_methods::ExpressionMethods;
-use diesel::internal::operators_macro::FieldAliasMapper;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use ipnet::IpNet;

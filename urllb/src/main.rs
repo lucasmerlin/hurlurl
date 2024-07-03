@@ -30,9 +30,9 @@ use serde::{Deserialize, Serialize};
 use shared::{CreateResult, PaymentStatus};
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::sync::Arc;
 use stripe::{
     CheckoutSession, CheckoutSessionId, CheckoutSessionMode, CreateCheckoutSession,
-    CreateCheckoutSessionCustomText, CreateCheckoutSessionCustomTextSubmit,
     CreateCheckoutSessionLineItems,
 };
 use tokio::io;
@@ -53,12 +53,13 @@ struct Config {
     ip_source: SecureClientIpSource,
     database_url: String,
     stripe_secret_key: String,
+    stripe_price_id: String,
 }
 
 #[tokio::main]
 async fn main() {
     dotenvy::dotenv().ok();
-    let config: Config = envy::from_env().unwrap();
+    let config: Arc<Config> = Arc::new(envy::from_env().unwrap());
 
     {
         let mut db = old_connection();
@@ -67,9 +68,9 @@ async fn main() {
 
     tracing_subscriber::fmt::init();
 
-    let stripe_client = stripe::Client::new(config.stripe_secret_key);
+    let stripe_client = stripe::Client::new(config.stripe_secret_key.clone());
 
-    let manager = AsyncDieselConnectionManager::new(config.database_url);
+    let manager = AsyncDieselConnectionManager::new(config.database_url.clone());
 
     let pool = Pool::builder().build(manager).await.unwrap();
 
@@ -97,7 +98,8 @@ async fn main() {
         .route("/:link", get(link).post(post_link))
         .with_state(pool)
         .layer(Extension(stripe_client))
-        .layer(config.ip_source.into_extension());
+        .layer(config.ip_source.clone().into_extension())
+        .layer(Extension(config.clone()));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::debug!("listening on {}", addr);
@@ -187,6 +189,7 @@ lazy_static! {
 async fn post_link(
     State(pool): State<Pool>,
     Extension(stripe): Extension<stripe::Client>,
+    Extension(config): Extension<Arc<Config>>,
     SecureClientIp(ip): SecureClientIp,
     Json(body): Json<CreateLinkDto>,
 ) -> Result<impl IntoResponse, StatusCode> {
@@ -213,9 +216,9 @@ async fn post_link(
     let success_url = format!("https://hurlurl.com/info/{}", url);
 
     let session = if !whitelisted {
-        let mut create_session = CreateCheckoutSession {
+        let create_session = CreateCheckoutSession {
             line_items: Some(vec![CreateCheckoutSessionLineItems {
-                price: Some("price_1PYEggFEynvp7vAemBawXewH".to_string()),
+                price: Some(config.stripe_price_id.clone()),
                 quantity: Some(1),
                 ..Default::default()
             }]),

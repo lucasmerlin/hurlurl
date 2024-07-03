@@ -2,7 +2,7 @@ use crate::permanent_redirect_checkbox::PermanentRedirectCheckbox;
 use crate::Route;
 use gloo_net::http::Request;
 use serde::{Deserialize, Serialize};
-use shared::{CreateLinkDto, CreateResult, CreateTargetDto, LinkDto};
+use shared::{CreateLinkDto, CreateResult, CreateTargetDto};
 use validator::Validate;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::{JsCast, JsValue};
