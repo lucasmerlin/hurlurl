@@ -21,6 +21,9 @@ pub struct Link {
     pub fraud_reason: Option<String>,
     #[serde(skip, default)]
     pub created_by_ip: Option<ipnet::IpNet>,
+
+    pub stripe_session_id: Option<String>,
+    pub payment_status: Option<PaymentStatus>,
 }
 
 #[cfg_attr(feature = "diesel", derive(Queryable, Identifiable))]
@@ -53,6 +56,12 @@ pub struct CreateLinkDto {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum CreateResult {
+    Link(LinkDto),
+    StripeRedirect(String),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LinkDto {
     #[serde(flatten)]
     pub link: Link,
@@ -65,4 +74,16 @@ pub struct TotalStats {
     pub links: i64,
     pub redirects: i64,
     pub targets: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "diesel", derive(diesel_derive_enum::DbEnum))]
+#[cfg_attr(
+    feature = "diesel",
+    ExistingTypePath = "crate::schema::sql_types::PaymentStatus"
+)]
+pub enum PaymentStatus {
+    Pending,
+    Succeeded,
+    Failed,
 }

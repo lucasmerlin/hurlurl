@@ -1,14 +1,14 @@
 use std::net::{Ipv4Addr, Ipv6Addr};
 
-use anyhow::Result;
+use crate::error::Result;
 use diesel::associations::HasTable;
 use diesel::expression_methods::ExpressionMethods;
+use diesel::internal::operators_macro::FieldAliasMapper;
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use ipnet::IpNet;
-use nanoid::nanoid;
 
-use shared::schema;
+use shared::{schema, PaymentStatus};
 
 use crate::db::Connection;
 use crate::models::{CreateLinkDto, Link, NewLink, NewTarget, Target};
@@ -49,16 +49,32 @@ pub async fn increase_redirect_count<'c>(
     Ok(())
 }
 
+pub async fn set_link_payment_status<'c>(
+    connection: &mut Connection<'c>,
+    link: &str,
+    status: PaymentStatus,
+) -> Result<()> {
+    diesel::update(links.filter(url.eq(link)))
+        .set(schema::links::payment_status.eq(status))
+        .execute(connection)
+        .await?;
+
+    Ok(())
+}
+
 pub async fn create_link<'c>(
     connection: &mut Connection<'c>,
     create: &CreateLinkDto,
+    path: &str,
     user_ip: IpNet,
+    stripe_session: Option<String>,
 ) -> Result<(Link, Vec<Target>)> {
     let link = NewLink {
-        // TODO: Add some way to add custom url
-        url: &nanoid!(5),
+        url: path,
         permanent_redirect: create.permanent_redirect,
         created_by_ip: Some(anonymize_ip(user_ip)),
+        payment_status: stripe_session.as_ref().map(|_| PaymentStatus::Pending),
+        stripe_session_id: stripe_session.as_deref(),
     };
 
     let link = diesel::insert_into(links::table())
@@ -83,30 +99,22 @@ pub async fn create_link<'c>(
     Ok((link, target_results))
 }
 
-
 /// Truncates some bits of the IP address to anonymize it.
-pub fn anonymize_ip(
-    ip: IpNet,
-) -> IpNet {
+pub fn anonymize_ip(ip: IpNet) -> IpNet {
     match ip {
         IpNet::V4(v4) => {
             let octets = v4.addr().octets();
-            let new_ip = ipnet::Ipv4Net::new(Ipv4Addr::new(octets[0], octets[1], octets[2], 0), 24).unwrap();
+            let new_ip =
+                ipnet::Ipv4Net::new(Ipv4Addr::new(octets[0], octets[1], octets[2], 0), 24).unwrap();
             IpNet::V4(new_ip)
         }
         IpNet::V6(v6) => {
             let octets = v6.addr().segments();
-            let new_ip = ipnet::Ipv6Net::new(Ipv6Addr::new(
-                octets[0],
-                octets[1],
-                octets[2],
-                octets[3],
-                0,
-                0,
-                0,
-                0,
-            ), 120,
-            ).unwrap();
+            let new_ip = ipnet::Ipv6Net::new(
+                Ipv6Addr::new(octets[0], octets[1], octets[2], octets[3], 0, 0, 0, 0),
+                120,
+            )
+            .unwrap();
             IpNet::V6(new_ip)
         }
     }

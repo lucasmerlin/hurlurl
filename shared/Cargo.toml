@@ -11,5 +11,6 @@ default = []
 [dependencies]
 serde = { version = "1", features = ["serde_derive"] }
 diesel = { version = "2.0.4", optional = true, features = ["network-address", "ipnet-address"] }
-validator = { version = "0.16",  features = ["derive"] }
+diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
+validator = { version = "0.16", features = ["derive"] }
 ipnet = "2"

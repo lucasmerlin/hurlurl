@@ -20,6 +20,7 @@ tracing = "0.1"
 diesel_migrations = "2"
 diesel = { version = "2.0.4", features = ["postgres"] }
 diesel-async = { version = "0.2", features = ["tokio-postgres", "postgres", "tokio", "bb8"] }
+diesel-derive-enum = { version = "2.1.0", features = ["postgres"] }
 ipnet = "2"
 bb8 = "0.8"
 bb8-postgres = "0.8"
@@ -37,3 +38,6 @@ envy = "0.4"
 dotenvy = "0.15"
 
 shared = { path = "../shared", features = ["diesel"] }
+
+async-stripe = { version = "0.37", features = ["runtime-tokio-hyper-rustls-webpki"] }
+thiserror = "1"

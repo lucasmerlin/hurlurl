@@ -1,8 +1,13 @@
 #[macro_use]
 extern crate diesel;
 
-use std::net::SocketAddr;
-
+use crate::db::Pool;
+use crate::db::{old_connection, run_migrations};
+use crate::error::Error;
+use crate::models::{CreateLinkDto, LinkDto};
+use crate::service::{
+    create_link, get_link_and_targets, increase_redirect_count, set_link_payment_status,
+};
 use axum::body::{Empty, Full};
 use axum::extract::{Path, State};
 use axum::http::{header, HeaderValue};
@@ -13,24 +18,29 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
+    Extension, Json, Router,
 };
 use axum_client_ip::{SecureClientIp, SecureClientIpSource};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use include_dir::{include_dir, Dir};
 use lazy_static::lazy_static;
+use nanoid::nanoid;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
+use shared::{CreateResult, PaymentStatus};
+use std::net::SocketAddr;
+use std::str::FromStr;
+use stripe::{
+    CheckoutSession, CheckoutSessionId, CheckoutSessionMode, CreateCheckoutSession,
+    CreateCheckoutSessionCustomText, CreateCheckoutSessionCustomTextSubmit,
+    CreateCheckoutSessionLineItems,
+};
 use tokio::io;
 use tower_http::services::ServeDir;
 use validator::Validate;
 
-use crate::db::Pool;
-use crate::db::{old_connection, run_migrations};
-use crate::models::{CreateLinkDto, LinkDto};
-use crate::service::{create_link, get_link_and_targets, increase_redirect_count};
-
 mod db;
+mod error;
 mod models;
 mod schema;
 mod service;
@@ -42,6 +52,7 @@ static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../web/dist");
 struct Config {
     ip_source: SecureClientIpSource,
     database_url: String,
+    stripe_secret_key: String,
 }
 
 #[tokio::main]
@@ -55,6 +66,8 @@ async fn main() {
     }
 
     tracing_subscriber::fmt::init();
+
+    let stripe_client = stripe::Client::new(config.stripe_secret_key);
 
     let manager = AsyncDieselConnectionManager::new(config.database_url);
 
@@ -83,6 +96,7 @@ async fn main() {
         .nest("/static", static_router)
         .route("/:link", get(link).post(post_link))
         .with_state(pool)
+        .layer(Extension(stripe_client))
         .layer(config.ip_source.into_extension());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
@@ -109,6 +123,15 @@ async fn link(
     let (link, target_results) = get_link_and_targets(&mut connection, &params.link)
         .await
         .map_err(|_| StatusCode::NOT_FOUND)?;
+
+    if let Some(payment_status) = &link.payment_status {
+        match payment_status {
+            PaymentStatus::Pending | PaymentStatus::Failed => {
+                return Err(StatusCode::NOT_FOUND);
+            }
+            PaymentStatus::Succeeded => {}
+        }
+    }
 
     if link.fraud {
         return Ok(Response::builder()
@@ -154,8 +177,16 @@ lazy_static! {
         .collect();
 }
 
+lazy_static! {
+    static ref WHITELIST: Vec<String> = include_str!("whitelist.txt")
+        .lines()
+        .map(|s| s.to_string())
+        .collect();
+}
+
 async fn post_link(
     State(pool): State<Pool>,
+    Extension(stripe): Extension<stripe::Client>,
     SecureClientIp(ip): SecureClientIp,
     Json(body): Json<CreateLinkDto>,
 ) -> Result<impl IntoResponse, StatusCode> {
@@ -170,33 +201,111 @@ async fn post_link(
         return Err(StatusCode::FORBIDDEN);
     }
 
-    let mut connection = pool
-        .get()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let whitelisted = WHITELIST.iter().any(|w| {
+        body.targets
+            .iter()
+            .map(|t| &t.target_url)
+            .any(|t| t.starts_with(w))
+    });
 
-    let (link, target_results) = create_link(&mut connection, &body, ip.into())
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let url = nanoid!(5);
 
-    Ok(Json(LinkDto {
-        link,
-        targets: target_results,
-    }))
+    let success_url = format!("https://hurlurl.com/info/{}", url);
+
+    let session = if !whitelisted {
+        let mut create_session = CreateCheckoutSession {
+            line_items: Some(vec![CreateCheckoutSessionLineItems {
+                price: Some("price_1PYEggFEynvp7vAemBawXewH".to_string()),
+                quantity: Some(1),
+                ..Default::default()
+            }]),
+            mode: Some(CheckoutSessionMode::Payment),
+            success_url: Some(&success_url),
+            cancel_url: Some("https://hurlurl.com"),
+            ..Default::default()
+        };
+
+        let session = CheckoutSession::create(&stripe, create_session)
+            .await
+            .map_err(error::Error::StripeError)?;
+        Some(session)
+    } else {
+        None
+    };
+
+    let mut connection = pool.get().await.map_err(Error::PoolError)?;
+    let (link, target_results) = create_link(
+        &mut connection,
+        &body,
+        &url,
+        ip.into(),
+        session.as_ref().map(|s| s.id.to_string()),
+    )
+    .await?;
+
+    match session {
+        None => Ok(Json(CreateResult::Link(LinkDto {
+            link,
+            targets: target_results,
+        }))),
+        Some(session) => Ok(Json(CreateResult::StripeRedirect(
+            session.url.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?,
+        ))),
+    }
 }
 
 async fn link_info(
     Path(params): Path<Params>,
     State(pool): State<Pool>,
+    Extension(stripe): Extension<stripe::Client>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut connection = pool
         .get()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let (link, results) = get_link_and_targets(&mut connection, &params.link)
+    let (mut link, results) = get_link_and_targets(&mut connection, &params.link)
         .await
         .map_err(|_| StatusCode::NOT_FOUND)?;
+
+    if let Some(status) = &link.payment_status {
+        match status {
+            PaymentStatus::Pending => {
+                if let Some(id) = &link.stripe_session_id {
+                    let session = CheckoutSession::retrieve(
+                        &stripe,
+                        &CheckoutSessionId::from_str(id).unwrap(),
+                        &[],
+                    )
+                    .await
+                    .map_err(Error::StripeError)?;
+
+                    if session.status == Some(stripe::CheckoutSessionStatus::Complete) {
+                        set_link_payment_status(
+                            &mut connection,
+                            &params.link,
+                            PaymentStatus::Succeeded,
+                        )
+                        .await?;
+                    } else {
+                        set_link_payment_status(
+                            &mut connection,
+                            &params.link,
+                            PaymentStatus::Failed,
+                        )
+                        .await?;
+                        return Err(StatusCode::NOT_FOUND);
+                    }
+                }
+            }
+            PaymentStatus::Failed => {
+                return Err(StatusCode::NOT_FOUND);
+            }
+            PaymentStatus::Succeeded => {}
+        }
+    }
+
+    link.stripe_session_id = None;
 
     Ok(Json(LinkDto {
         link,

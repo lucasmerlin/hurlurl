@@ -1,6 +1,15 @@
 // @generated automatically by Diesel CLI.
 
+pub mod sql_types {
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "payment_status"))]
+    pub struct PaymentStatus;
+}
+
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::PaymentStatus;
+
     links (id) {
         id -> Int4,
         url -> Varchar,
@@ -9,6 +18,8 @@ diesel::table! {
         fraud -> Bool,
         fraud_reason -> Nullable<Text>,
         created_by_ip -> Nullable<Inet>,
+        stripe_session_id -> Nullable<Text>,
+        payment_status -> Nullable<PaymentStatus>,
     }
 }
 

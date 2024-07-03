@@ -1,4 +1,3 @@
-
-
 [workspace]
 members = ["urllb", "web", "shared"]
+resolver = "2"

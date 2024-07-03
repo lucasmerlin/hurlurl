@@ -2,7 +2,7 @@ use crate::permanent_redirect_checkbox::PermanentRedirectCheckbox;
 use crate::Route;
 use gloo_net::http::Request;
 use serde::{Deserialize, Serialize};
-use shared::{CreateLinkDto, CreateTargetDto, LinkDto};
+use shared::{CreateLinkDto, CreateResult, CreateTargetDto, LinkDto};
 use validator::Validate;
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::{JsCast, JsValue};
@@ -100,13 +100,24 @@ pub fn form() -> Html {
                     .send()
                     .await
                     .unwrap()
-                    .json::<LinkDto>()
+                    .json::<CreateResult>()
                     .await
                     .unwrap();
 
-                navigator.push(&Route::Link {
-                    link: response.link.url,
-                });
+                match response {
+                    CreateResult::Link(link) => {
+                        navigator.push(&Route::Link {
+                            link: link.link.url,
+                        });
+                    }
+                    CreateResult::StripeRedirect(url) => {
+                        web_sys::window()
+                            .unwrap()
+                            .location()
+                            .set_href(&url)
+                            .unwrap();
+                    }
+                }
 
                 plausible_event(PlausibleProps {
                     permanent_redirect: *permanent_redirect,
@@ -152,6 +163,49 @@ pub fn form() -> Html {
             </div>
 
             <PermanentRedirectCheckbox on_click={redirect_click} checked={*permanent_redirect} disabled={false} />
+
+            <div>
+                {"You will need to pay 1€ via Stripe. (No signup required!) "}
+                <label for="paid-dialog" class="cursor-pointer link">
+                    {"Why?"}
+                </label>
+            </div>
+
+            <input type="checkbox" id="paid-dialog" class="modal-toggle" />
+            <div class="modal">
+                <div class="modal-box">
+                    <h3 class="font-bold text-lg">{"Why is hurlurl paid?"}</h3>
+                    <p class="py-4">{r#"
+                        hurlurl was used by a lot of spammers and scammers.
+                        To prevent abuse, we charge a small fee to create a hurlurl.
+                        This fee is used to pay for the infrastructure and to prevent abuse.
+
+                        YouTube urls are whitelisted, so you can freely create YouTube hurlurls.
+                    "#}</p>
+                    <p class="py-4">
+                        {r#"
+                            If you need to create a lot of different hurlurls for a certain domain,
+                            reach out to me at
+                        "#}
+                        <a href="mailto:lucas@merlins.media" class="link">{"lucas@merlins.media"}</a>
+                       {r#"
+                            and I can whitelist the domain.
+                        "#}
+                    </p>
+                    <p class="py-4">
+                        {r#"
+                            You can also fork the project on github
+                            to host your own version:
+                        "#}
+                        <a href="https://github.com/lucasmerlin/hurlurl" class="link">{
+                            "https://github.com/lucasmerlin/hurlurl"
+                        }</a>
+                    </p>
+                    <div class="modal-action">
+                        <label for="paid-dialog" class="btn">{"Ok!"}</label>
+                    </div>
+                </div>
+            </div>
 
             <div class="form-control">
                 <button class="btn btn-primary" onclick={create_link} disabled={has_error || targets.len() == 0}>{ "Create hurlurl" }</button>
