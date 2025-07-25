@@ -23,7 +23,7 @@ extern "C" {
 
 #[function_component(Form)]
 pub fn form() -> Html {
-    let targets = use_state::<Vec<CreateTargetDto>, _>(|| vec![]);
+    let targets = use_state::<Vec<CreateTargetDto>, _>(std::vec::Vec::new);
 
     let plausible_event = |props: PlausibleProps| {
         plausible(
@@ -37,7 +37,7 @@ pub fn form() -> Html {
     let errors = targets
         .iter()
         .map(|target| {
-            if let Ok(_) = target.validate() {
+            if target.validate().is_ok() {
                 None
             } else {
                 Some("Invalid URL")
@@ -45,7 +45,7 @@ pub fn form() -> Html {
         })
         .collect::<Vec<_>>();
 
-    let has_error = errors.iter().find(|v| v.is_some()).is_some();
+    let has_error = errors.iter().any(|v| v.is_some());
 
     let navigator = use_navigator().unwrap();
 
@@ -208,7 +208,7 @@ pub fn form() -> Html {
             </div>
 
             <div class="form-control">
-                <button class="btn btn-primary" onclick={create_link} disabled={has_error || targets.len() == 0}>{ "Create hurlurl" }</button>
+                <button class="btn btn-primary" onclick={create_link} disabled={has_error || targets.is_empty()}>{ "Create hurlurl" }</button>
             </div>
         </>
     }

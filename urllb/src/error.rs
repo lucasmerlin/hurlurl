@@ -17,8 +17,6 @@ pub enum Error {
 impl From<Error> for StatusCode {
     fn from(err: Error) -> Self {
         error!("Internal server error: {:?}", err);
-        match err {
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        }
+        StatusCode::INTERNAL_SERVER_ERROR
     }
 }

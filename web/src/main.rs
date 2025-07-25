@@ -30,7 +30,7 @@ fn switch(route: Route) -> Html {
     match route {
         Route::Home => html! { <Home/> },
         Route::Link { link } => html! {<Info link={link.clone()}/>},
-        Route::Imprint {} => html! {<Imprint/>},
+        Route::Imprint => html! {<Imprint/>},
     }
 }
 

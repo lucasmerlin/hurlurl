@@ -18,13 +18,13 @@ pub struct InfoProps {
 pub fn info(props: &InfoProps) -> Html {
     let link = props.link.clone();
 
-    let data = use_fetch::<LinkDto>(&format!("/api/links/{}", link));
+    let data = use_fetch::<LinkDto>(&format!("/api/links/{link}"));
 
     let copy_link = {
         let link = link.clone();
         Callback::from(move |_| {
             let clipboard = window().unwrap().navigator().clipboard();
-            let _ = clipboard.write_text(&format!("https://hurlurl.com/{}", link));
+            let _ = clipboard.write_text(&format!("https://hurlurl.com/{link}"));
         })
     };
 

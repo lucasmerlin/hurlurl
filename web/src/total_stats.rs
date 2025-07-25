@@ -8,7 +8,7 @@ pub fn total_stats() -> Html {
 
     let value = |val| {
         if let Some(val) = val {
-            format!("{}", val)
+            format!("{val}")
         } else {
             "".to_string()
         }
