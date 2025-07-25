@@ -2,7 +2,6 @@
 extern crate diesel;
 
 use crate::db::Pool;
-use crate::db::{old_connection, run_migrations};
 use crate::error::Error;
 use crate::models::{CreateLinkDto, LinkDto};
 use crate::service::{
@@ -21,13 +20,13 @@ use axum::{
     Extension, Json, Router,
 };
 use axum_client_ip::{SecureClientIp, SecureClientIpSource};
-use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use include_dir::{include_dir, Dir};
 use lazy_static::lazy_static;
 use nanoid::nanoid;
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use shared::{CreateResult, PaymentStatus};
+use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -37,6 +36,7 @@ use stripe::{
 };
 use tokio::io;
 use tower_http::services::ServeDir;
+use tracing_subscriber::EnvFilter;
 use validator::Validate;
 
 mod db;
@@ -59,20 +59,19 @@ struct Config {
 #[tokio::main]
 async fn main() {
     dotenvy::dotenv().ok();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .init();
+
     let config: Arc<Config> = Arc::new(envy::from_env().unwrap());
 
-    {
-        let mut db = old_connection();
-        run_migrations(&mut db);
-    }
-
-    tracing_subscriber::fmt::init();
+    let pool = db::connect_and_migrate(&config.database_url)
+        .await
+        .expect("Failed to connect to database");
 
     let stripe_client = stripe::Client::new(config.stripe_secret_key.clone());
-
-    let manager = AsyncDieselConnectionManager::new(config.database_url.clone());
-
-    let pool = Pool::builder().build(manager).await.unwrap();
 
     let serve_dir_service = get_service(
         ServeDir::new(option_env!("STATIC_DIR").unwrap_or("../web/dist"))
@@ -82,7 +81,7 @@ async fn main() {
     .handle_error(|error: io::Error| async move {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Unhandled internal error: {}", error),
+            format!("Unhandled internal error: {error}"),
         )
     });
 
@@ -102,7 +101,7 @@ async fn main() {
         .layer(Extension(config.clone()));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    tracing::debug!("listening on {}", addr);
+    tracing::info!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
@@ -120,7 +119,7 @@ async fn link(
     let mut connection = pool
         .get()
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|err| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let (link, target_results) = get_link_and_targets(&mut connection, &params.link)
         .await
@@ -213,7 +212,7 @@ async fn post_link(
 
     let url = nanoid!(5);
 
-    let success_url = format!("https://hurlurl.com/info/{}", url);
+    let success_url = format!("https://hurlurl.com/info/{url}");
 
     let session = if !whitelisted {
         let create_session = CreateCheckoutSession {
@@ -317,7 +316,10 @@ async fn link_info(
 }
 
 async fn total_stats(State(pool): State<Pool>) -> Result<impl IntoResponse, StatusCode> {
-    let mut connection = pool.get().await.map_err(|_| StatusCode::NOT_FOUND)?;
+    let mut connection = pool
+        .get()
+        .await
+        .map_err(|err| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let stats = stats::total_stats(&mut connection)
         .await
