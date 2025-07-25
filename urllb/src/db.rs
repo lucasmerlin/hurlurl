@@ -8,8 +8,7 @@ use diesel_async::async_connection_wrapper::AsyncConnectionWrapper;
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, ManagerConfig};
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
-use rustls::ClientConfig;
-use rustls_platform_verifier::ConfigVerifierExt;
+use rustls::{ClientConfig, RootCertStore};
 use std::fmt::Debug;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
@@ -20,14 +19,20 @@ pub type Connection<'a> = PooledConnection<'a, AsyncDieselConnectionManager<Asyn
 fn tls_establish_connection(config: &str) -> BoxFuture<'_, ConnectionResult<AsyncPgConnection>> {
     let fut = async {
         // We first set up the way we want rustls to work.
-        let rustls_config = ClientConfig::with_platform_verifier();
+        let mut root_store = RootCertStore::empty();
+
+        // Add webpki-roots (Mozilla's root certificates)
+        root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+
+        let rustls_config = ClientConfig::builder()
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
+
         let tls = tokio_postgres_rustls::MakeRustlsConnect::new(rustls_config);
-        let (client, conn) = tokio_postgres::connect(config, tls)
-            .await
-            .map_err(|e| {
-                tracing::error!("Failed to connect to database: {}", e);
-                ConnectionError::BadConnection(e.to_string())
-            })?;
+        let (client, conn) = tokio_postgres::connect(config, tls).await.map_err(|e| {
+            tracing::error!("Failed to connect to database: {}", e);
+            ConnectionError::BadConnection(e.to_string())
+        })?;
 
         AsyncPgConnection::try_from_client_and_connection(client, conn).await
     };
@@ -35,11 +40,6 @@ fn tls_establish_connection(config: &str) -> BoxFuture<'_, ConnectionResult<Asyn
 }
 
 pub async fn connect_and_migrate(url: &str) -> anyhow::Result<Pool> {
-    let tls_config = rustls::ClientConfig::builder()
-        .with_root_certificates(rustls::RootCertStore::empty())
-        .with_no_client_auth();
-    let tls = tokio_postgres_rustls::MakeRustlsConnect::new(tls_config);
-
     let mut manager_config = ManagerConfig::default();
     manager_config.custom_setup = Box::new(tls_establish_connection);
 

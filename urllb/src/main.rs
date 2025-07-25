@@ -119,7 +119,7 @@ async fn link(
     let mut connection = pool
         .get()
         .await
-        .map_err(|err| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let (link, target_results) = get_link_and_targets(&mut connection, &params.link)
         .await
@@ -319,7 +319,7 @@ async fn total_stats(State(pool): State<Pool>) -> Result<impl IntoResponse, Stat
     let mut connection = pool
         .get()
         .await
-        .map_err(|err| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let stats = stats::total_stats(&mut connection)
         .await
