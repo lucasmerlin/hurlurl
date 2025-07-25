@@ -22,7 +22,6 @@ diesel = { version = "2.0.4", features = ["postgres"] }
 diesel-async = { version = "0.6.1", features = ["tokio-postgres", "postgres", "tokio", "bb8", "async-connection-wrapper"] }
 ipnet = "2"
 bb8 = "0.9.0"
-dotenv = "0.15"
 rand = "0.8"
 nanoid = "0.4"
 include_dir = "0.7"

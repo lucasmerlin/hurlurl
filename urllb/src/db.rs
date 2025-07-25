@@ -1,5 +1,3 @@
-extern crate dotenv;
-
 use diesel::prelude::*;
 
 use diesel_async::AsyncPgConnection;
