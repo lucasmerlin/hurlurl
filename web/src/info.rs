@@ -23,9 +23,8 @@ pub fn info(props: &InfoProps) -> Html {
     let copy_link = {
         let link = link.clone();
         Callback::from(move |_| {
-            if let Some(clipboard) = window().unwrap().navigator().clipboard() {
-                let _ = clipboard.write_text(&format!("https://hurlurl.com/{}", link));
-            }
+            let clipboard = window().unwrap().navigator().clipboard();
+            let _ = clipboard.write_text(&format!("https://hurlurl.com/{}", link));
         })
     };
 
