@@ -24,7 +24,10 @@ fn tls_establish_connection(config: &str) -> BoxFuture<'_, ConnectionResult<Asyn
         let tls = tokio_postgres_rustls::MakeRustlsConnect::new(rustls_config);
         let (client, conn) = tokio_postgres::connect(config, tls)
             .await
-            .map_err(|e| ConnectionError::BadConnection(e.to_string()))?;
+            .map_err(|e| {
+                tracing::error!("Failed to connect to database: {}", e);
+                ConnectionError::BadConnection(e.to_string())
+            })?;
 
         AsyncPgConnection::try_from_client_and_connection(client, conn).await
     };
